@@ -1,0 +1,20 @@
+--9
+--debug
+-- select p.id_proprietar, p.nume, p.prenume, sum(c.suma_platita)
+-- from PROPRIETAR p,
+--      FACTURA f,
+--      CHITANTA c,
+--      FACTURA_PROPRIETAR fp
+-- where p.id_proprietar = fp.id_proprietar
+--   and fp.id_factura = f.id_factura
+--   and f.id_factura = c.id_factura
+-- group by p.id_proprietar, p.nume, p.prenume;
+--
+-- select p.id_proprietar, p.nume, p.prenume, c.id_chitanta, c.suma_platita
+-- from PROPRIETAR p,
+--      FACTURA f,
+--      CHITANTA c,
+--      FACTURA_PROPRIETAR fp
+-- where p.id_proprietar = fp.id_proprietar
+--   and fp.id_factura = f.id_factura
+--   and f.id_factura = c.id_factura
