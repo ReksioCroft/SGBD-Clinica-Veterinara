@@ -16,3 +16,5 @@ ERD:
 
 Diagrama Conceptuala:
 ![alt text](../main/Relational_3.png)
+
+Proiect realizat și testat utilizând Oracle Database Express Edition (XE) Release 11.2.0.2.0 (11gR2)
