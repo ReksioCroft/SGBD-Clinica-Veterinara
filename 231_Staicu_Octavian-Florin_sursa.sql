@@ -648,6 +648,9 @@ end;
 --8
 --Intoarcem id-ul clientilor cu cea mai mare suma achitata (nu datorata)
 --Daca sunt mai multi, ii intoarcem pe toti
+-- !Obs: Desi cerinta 8 cerea sa se trateze exceptiile, aceasta functie nu genereaza exceptii
+-- Asa ca, functia 6 este cea in care este evidentiata o tratare de exceptii foarte utila
+-- Multumesc pentru intelegere :)
 CREATE or REPLACE TYPE tab_imb is TABLE OF NUMBER(10);
 /
 
@@ -867,6 +870,35 @@ VALUES (100, 1, 100, 1, to_date('01.01.1991', 'dd.mm.yyyy'));
 update FISA_MEDICALA
 set data_fisa=to_date('01.01.1991', 'dd.mm.yyyy')
 where id_fisa = 1;
+
+--compound trigger
+CREATE OR REPLACE TRIGGER trig_update_contracte
+    FOR UPDATE
+    ON CONTRACT COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Afisare cotracte actualizate');
+END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID contract ' || :new.id_contract);
+        DBMS_OUTPUT.PUT_LINE('Data semnare ' || :new.data_semnare);
+        DBMS_OUTPUT.PUT_LINE('Observatii ' || :new.observatii);
+        DBMS_OUTPUT.PUT_LINE('ID contract modificat ' || :new.id_contract_modificat);
+    END AFTER EACH ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Contractele au fost actualizate');
+    END AFTER STATEMENT;
+    END trig_update_contracte;
+/
+
+UPDATE CONTRACT
+SET OBSERVATII='Obs'
+WHERE ID_CONTRACT > 1;
 
 --12
 
@@ -1153,6 +1185,7 @@ end;
 
 --14
 CREATE OR REPLACE PACKAGE package_clinica_vet_tav14 AS
+    TYPE tab_imb is TABLE OF NUMBER(10);
     top_clienti tab_imb := tab_imb();
     FUNCTION topclienti RETURN PLS_INTEGER;
     PROCEDURE afis_topclienti;
@@ -1326,7 +1359,7 @@ CREATE OR REPLACE PACKAGE package_clinica_vet_utilitare
 IS
 
     type t_idx is table of pls_integer index by pls_integer;
-    type array is VARRAY (1000) of pls_integer;
+    type array is VARRAY(1000) of pls_integer;
     type myrec_datorii is record
                           (
                               id_prop      PROPRIETAR.id_proprietar%type,
@@ -1387,8 +1420,7 @@ IS
                p.prenume,
                fp.id_factura,
                f.total_factura,
-               sum(c.suma_platita)
-            bulk collect
+               sum(c.suma_platita) bulk collect
         into my_t
         from PROPRIETAR p,
              FACTURA_PROPRIETAR fp,
@@ -1442,7 +1474,7 @@ end;
 /
 
 DECLARE
-    v   package_clinica_vet_utilitare.array := package_clinica_vet_utilitare.array(7,1,2,5,3);
+    v   package_clinica_vet_utilitare.array := package_clinica_vet_utilitare.array(7, 1, 2, 5, 3);
     sol package_clinica_vet_utilitare.t_idx;
 BEGIN
 
