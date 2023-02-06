@@ -1,5 +1,5 @@
 -- 8
-CREATE TABLE logging
+CREATE TABLE MESAJE
 (
     message_id   NUMBER,
     message      VARCHAR2(255),
@@ -170,6 +170,9 @@ BEGIN
 EXCEPTION
     when faliment then
         DBMS_OUTPUT.PUT_LINE('Nu avem niciun animalut care s-a tratat la noi...');
+        insert into mesaje(message_id, message, message_type, created_by, created_at)
+        values (seq_err.NEXTVAL, 'Nu avem niciun animalut care s-a tratat la noi...', 'I', USER, sysdate);
+        commit;
 END;
 /
 
@@ -237,16 +240,32 @@ BEGIN
                                          ' al lui ' || nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
                                          ' la data de ' || i.data_fisa ||
                                          ' desi a fost tratat, cu fisa medicala cu id ' || i.id_fisa);
+                    insert into mesaje(message_id, message, message_type, created_by, created_at)
+                    values (seq_err.NEXTVAL,
+                            'Nu s-a emis nicio factura pentru proprietarul animalutului ' || i.animnume ||
+                            ' al lui ' || nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
+                            ' la data de ' || i.data_fisa ||
+                            ' desi a fost tratat, cu fisa medicala cu id ' || i.id_fisa, 'I', USER, sysdate);
                 when TOO_MANY_ROWS then
                     DBMS_OUTPUT.PUT_LINE('Proprietarul animalutului ' || i.animnume || ' al lui ' ||
                                          nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
                                          ' are mai multe facturi emise la data de ' || i.data_fisa);
+                    insert into mesaje(message_id, message, message_type, created_by, created_at)
+                    values (seq_err.NEXTVAL, 'Proprietarul animalutului ' || i.animnume || ' al lui ' ||
+                                             nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
+                                             ' are mai multe facturi emise la data de ' || i.data_fisa, 'I', USER,
+                            sysdate);
                 when factura_fara_stapan then
                     DBMS_OUTPUT.PUT_LINE('Alerta: factura emisa pentru animalut fara stapan');
+                    insert into mesaje(message_id, message, message_type, created_by, created_at)
+                    values (seq_err.NEXTVAL, 'Alerta: factura emisa pentru animalut fara stapan', 'I', USER, sysdate);
                 when raport_pret_consultatii_prost then
                     DBMS_OUTPUT.PUT_LINE('Alerta: raport suma_totala/co prost');
+                    insert into mesaje(message_id, message, message_type, created_by, created_at)
+                    values (seq_err.NEXTVAL, 'Alerta: raport suma_totala/co prost', 'I', USER, sysdate);
             END;
         end loop;
+    commit;
     return co;
 end;
 /
@@ -353,6 +372,9 @@ CREATE OR REPLACE TRIGGER trig_contract
     BEFORE DELETE
     on CONTRACT
 BEGIN
+    insert into mesaje(message_id, message, message_type, created_by, created_at)
+    values (seq_err.NEXTVAL, 'trig_contract: Contractele trebuie sa ramana pe veci in sistem', 'E', USER, sysdate);
+    commit;
     RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
 END;
 /
@@ -361,6 +383,10 @@ CREATE OR REPLACE TRIGGER trig_contract_angajat
     BEFORE DELETE
     on CONTRACT_ANGAJAT
 BEGIN
+    insert into mesaje(message_id, message, message_type, created_by, created_at)
+    values (seq_err.NEXTVAL, 'trig_contract_angajat: Contractele trebuie sa ramana pe veci in sistem', 'E', USER,
+            sysdate);
+    commit;
     RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
 END;
 /
@@ -369,6 +395,10 @@ CREATE OR REPLACE TRIGGER trig_contract_producator
     BEFORE DELETE
     on CONTRACT_PRODUCATOR
 BEGIN
+    insert into mesaje(message_id, message, message_type, created_by, created_at)
+    values (seq_err.NEXTVAL, 'trig_contract_producator: Contractele trebuie sa ramana pe veci in sistem', 'E', USER,
+            sysdate);
+    commit;
     RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
 END;
 /
@@ -396,10 +426,18 @@ BEGIN
     from ANGAJAT
     where id_angajat = :NEW.id_doctor;
     if ok <> 1 then
+        insert into mesaje(message_id, message, message_type, created_by, created_at)
+        values (seq_err.NEXTVAL,
+                'trig_tratament_doctor: angajatul cu id-ul ' || :NEW.id_doctor || ' nu poate trata animalute', 'E',
+                USER, sysdate);
+        commit;
         RAISE_APPLICATION_ERROR(-20001, 'angajatul cu id-ul ' || :NEW.id_doctor || ' nu poate trata animalute');
     end if;
 EXCEPTION
     when NO_DATA_FOUND then
+        insert into mesaje(message_id, message, message_type, created_by, created_at)
+        values (seq_err.NEXTVAL, 'trig_tratament_doctor: Nu exista un asemenea doctor', 'E', USER, sysdate);
+        commit;
         RAISE_APPLICATION_ERROR(-20000, 'Nu exista un asemenea doctor');
 end;
 /
@@ -422,10 +460,18 @@ BEGIN
     where id_animalut = :NEW.id_animalut;
 
     if :NEW.data_fisa < zinastere then
+        insert into mesaje(message_id, message, message_type, created_by, created_at)
+        values (seq_err.NEXTVAL, 'trig_tratament_zinastere: Nu poti trata un animalut inainte ca acesta sa se nasca',
+                'E', USER, sysdate);
+        commit;
         RAISE_APPLICATION_ERROR(-20013, 'Nu poti trata un animalut inainte ca acesta sa se nasca');
     end if;
 EXCEPTION
     when NO_DATA_FOUND then
+        insert into mesaje(message_id, message, message_type, created_by, created_at)
+        values (seq_err.NEXTVAL, 'trig_tratament_zinastere: Nu exista un astfel de animalut in sistem', 'E', USER,
+                sysdate);
+        commit;
         RAISE_APPLICATION_ERROR(-20000, 'Nu exista un astfel de animalut in sistem');
 end;
 /
@@ -474,6 +520,10 @@ CREATE OR REPLACE TRIGGER trig_ldd_contract
 begin
     if lower(ORA_DICT_OBJ_NAME) = lower('Contract') or lower(ORA_DICT_OBJ_NAME) = lower('Contract_angajat') or
        lower(ORA_DICT_OBJ_NAME) = lower('Contract_producator') then
+        insert into mesaje(message_id, message, message_type, created_by, created_at)
+        values (seq_err.NEXTVAL, 'trig_ldd_contract: Nu aveti voie sa modificati sau sa stegeti tabela cu contracte',
+                'E', USER, sysdate);
+        commit;
         RAISE_APPLICATION_ERROR(-20777, 'Nu aveti voie sa modificati sau sa stegeti tabela cu contracte');
     end if;
 end;
@@ -640,6 +690,7 @@ AS
     EXCEPTION
         when faliment then
             DBMS_OUTPUT.PUT_LINE('Nu avem niciun animalut care s-a tratat la noi...');
+            commit;
     END afis_tratamente_animalute;
 
     FUNCTION factura_aferenta_fisa(suma_min IN float, suma_totala OUT float) return pls_integer
@@ -693,16 +744,33 @@ AS
                                              nvl(i.prenume, 'PROPRIETAR') ||
                                              ' la data de ' || i.data_fisa ||
                                              ' desi a fost tratat, cu fisa medicala cu id ' || i.id_fisa);
+                        insert into mesaje(message_id, message, message_type, created_by, created_at)
+                        values (seq_err.NEXTVAL,
+                                'Nu s-a emis nicio factura pentru proprietarul animalutului ' || i.animnume ||
+                                ' al lui ' || nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
+                                ' la data de ' || i.data_fisa ||
+                                ' desi a fost tratat, cu fisa medicala cu id ' || i.id_fisa, 'I', USER, sysdate);
                     when TOO_MANY_ROWS then
                         DBMS_OUTPUT.PUT_LINE('Proprietarul animalutului ' || i.animnume || ' al lui ' ||
                                              nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
                                              ' are mai multe facturi emise la data de ' || i.data_fisa);
+                        insert into mesaje(message_id, message, message_type, created_by, created_at)
+                        values (seq_err.NEXTVAL, 'Proprietarul animalutului ' || i.animnume || ' al lui ' ||
+                                                 nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
+                                                 ' are mai multe facturi emise la data de ' || i.data_fisa, 'I', USER,
+                                sysdate);
                     when factura_fara_stapan then
                         DBMS_OUTPUT.PUT_LINE('Alerta: factura emisa pentru animalut fara stapan');
+                        insert into mesaje(message_id, message, message_type, created_by, created_at)
+                        values (seq_err.NEXTVAL, 'Alerta: factura emisa pentru animalut fara stapan', 'I', USER,
+                                sysdate);
                     when raport_pret_consultatii_prost then
                         DBMS_OUTPUT.PUT_LINE('Alerta: raport suma_totala/co prost');
+                        insert into mesaje(message_id, message, message_type, created_by, created_at)
+                        values (seq_err.NEXTVAL, 'Alerta: raport suma_totala/co prost', 'I', USER, sysdate);
                 END;
             end loop;
+        commit;
         return co;
     end factura_aferenta_fisa;
 
