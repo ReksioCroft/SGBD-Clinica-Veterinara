@@ -2,19 +2,17 @@
 
 ### Acest proiect realizat în cadrul materiei SGBD se adresează unei clinici veterinare
 
-Fisierul [231_Staicu_Octavian-Florin_proiect.pdf](../main/231_Staicu_Octavian-Florin_proiect.pdf) conține documentația proiectul
+Fisierul [406_Staicu_Octavian-Florin_PREZENTARE.pdf](../main/406_Staicu_Octavian-Florin_PREZENTARE.pdf) conține documentația proiectul
 
-Sciptul de crearea al tabelelor este [tav_proiect_sgbd_Create_Tables.sql](../main/tav_proiect_sgbd_Create_Tables.sql)
+Sciptul de crearea al tabelelor este [406_Staicu_Octavian-Florin_SCHEMA.txt](../main/406_Staicu_Octavian-Florin_SCHEMA.txt)
 
-Scriptul de inserare in tabele este [tav_proiect_sgbd_Insert_Intro_Tables.sql](../main/tav_proiect_sgbd_Insert_Intro_Tables.sql)
-
-Proiectul complet in PL/SQL este [231_Staicu_Octavian-Florin_sursa.sql](../main/231_Staicu_Octavian-Florin_sursa.sql)
+Proiectul complet in PL/SQL este [406_Staicu_Octavian-Florin_sursa.sql](../main/406_Staicu_Octavian-Florin_sursa.sql)
 
 
 ERD: 
 ![alt text](../main/tav_proiect_sgbd_erd.jpg)
 
 Diagrama Conceptuala:
-![alt text](../main/Relational_3.png)
+![alt text](../main/Relational_1.png)
 
-Proiect realizat și testat utilizând Oracle Database Express Edition (XE) Release 11.2.0.2.0 (11gR2)
+Proiect realizat și testat utilizând Oracle Database Express Edition (XE) Release  (21c)
