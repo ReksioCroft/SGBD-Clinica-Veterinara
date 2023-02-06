@@ -1,0 +1,185 @@
+--7 SQL
+
+-- 7.1
+-- afisati pt fiecare contract de angajat, al catelea contract aditional este si ce contract modifica
+SELECT ctr.id_contract, ctr.id_angajat, LEVEL depth, PRIOR id_contract
+FROM (select c.id_contract, c.id_contract_modificat, a.id_angajat
+      from CONTRACT_ANGAJAT a,
+           CONTRACT c
+      where c.id_contract = a.id_contract) ctr
+START WITH ctr.ID_CONTRACT_MODIFICAT IS NULL
+CONNECT BY PRIOR ctr.id_contract = ctr.id_contract_modificat;
+
+-- 7.2
+-- pt fiecare animalut care a fost tratat in anul 2020, afisati nr de consultatii
+select fm.id_animalut, count(*)
+from ANIMALUT a,
+     FISA_MEDICALA fm
+where a.id_animalut = fm.id_animalut
+  and TO_CHAR(fm.DATA_FISA, 'YYYY') like '2020'
+group by fm.id_animalut;
+
+-- 7.3
+-- sa se afiseze pt fiecare animalut, suma total cheltuita pe consultari
+-- a caror factura a fost emisa in aceeasi zi cu consultatia pe numele proprietarului
+-- si numarul acestora
+select a.id_proprietar, a.id_animalut, sum(f.total_factura), count(*)
+from FACTURA_PROPRIETAR fp,
+     FACTURA f,
+     PROPRIETAR p,
+     ANIMALUT a
+where fp.id_factura = f.id_factura
+  and fp.id_proprietar = p.id_proprietar
+  and p.id_proprietar = a.id_proprietar
+  and fp.id_fisa_medicala in (select fm.id_fisa
+                              from FISA_MEDICALA fm
+                              where fm.id_animalut = a.id_animalut
+                                and f.data_emitere = fm.data_fisa)
+group by a.id_proprietar, a.id_animalut
+order by id_proprietar;
+
+-- 7.4
+-- afisati fiecare factura ce tip are cu majuscule
+-- daca nu are niciun tip(nu e nici producator, nici proprietar), scrie custom
+with f as (select f.id_factura, f.data_emitere, f.total_factura, 'proprietar' tip
+           from FACTURA f,
+                FACTURA_PROPRIETAR fp
+           where f.id_factura = fp.id_factura
+           union
+           select f.id_factura, f.data_emitere, f.total_factura, 'producator' tip
+           from FACTURA f,
+                FACTURA_PRODUCATOR fp
+           where f.id_factura = fp.id_factura)
+select fi.id_factura, fi.data_emitere, fi.total_factura, UPPER(NVL(f.tip, 'custom')) tip1
+from f,
+     FACTURA fi
+where fi.id_factura = f.id_factura(+)
+order by tip1, fi.total_factura, fi.data_emitere;
+
+-- 7.5
+-- afisati toti proprietarii si toti cainii acestora
+-- inclusiv proprietarii fara caini si cainii fara stapan
+select *
+from PROPRIETAR p
+         FULL OUTER JOIN ANIMALUT a ON p.id_proprietar = a.id_proprietar
+order by p.id_proprietar;
+
+-- 7.6
+-- pt fiecare factura cu suma sub 1000ron, afisati totalul
+-- lor, cate chitante au fost eliberate si suma totala a acestora
+-- precum si proprietarul
+select p.id_proprietar, f.id_factura, total_factura, count(id_chitanta), sum(suma_platita)
+from FACTURA f,
+     CHITANTA c,
+     FACTURA_PROPRIETAR fp,
+     PROPRIETAR p
+where f.id_factura = c.id_factura
+  and fp.id_factura = f.id_factura
+  and p.id_proprietar = fp.id_proprietar
+having total_factura < 1000
+group by p.id_proprietar, f.id_factura, total_factura;
+
+-- 7.7
+-- proprietarii care au platite toate facturile (si au minim o factura)
+-- operatorul division cu count
+select p.id_proprietar
+from PROPRIETAR p,
+     FACTURA f,
+     FACTURA_PROPRIETAR fp
+where p.id_proprietar = fp.id_proprietar
+  and f.id_factura = fp.id_factura
+group by p.id_proprietar
+having COUNT(*) = (select count(*)
+                   from FACTURA f1,
+                        FACTURA_PROPRIETAR fp1
+                   where f1.id_factura = fp1.id_factura
+                     and fp1.id_proprietar = p.id_proprietar
+                     and f1.total_factura <= (select sum(c.suma_platita)
+                                              from CHITANTA c
+                                              where c.id_factura = f1.id_factura));
+
+-- 7.8
+-- divison: proprietarii pt care nu exista facturi neplatite
+-- inclusiv cei care nu au facturi
+select p.id_proprietar
+from PROPRIETAR p
+where NOT EXISTS(
+        select 1
+        from FACTURA f,
+             FACTURA_PROPRIETAR fp
+        where f.id_factura = fp.id_factura
+          and fp.id_proprietar = p.id_proprietar
+          and not exists(
+                select 1
+                from FACTURA f1
+                where f1.id_factura = f.id_factura
+                  and f.total_factura >= (select sum(c.suma_platita) from CHITANTA c where c.id_factura = f1.id_factura)
+            )
+    );
+
+-- 7.9
+-- sa se afiseze pentru fiecare animalut cate luni au trecut intre prima si ultima fise medicala
+select a.id_animalut, round(MONTHS_BETWEEN(max(fm.data_fisa), min(fm.data_fisa)))
+from ANIMALUT a,
+     FISA_MEDICALA fm
+where a.id_animalut = fm.id_animalut
+group by a.id_animalut;
+
+-- 7.10
+-- afisati produse care expira luna viitoare din ultimul inventar
+select *
+from PRODUSE_DIN_INVENTAR pi,
+     PRODUS p
+where p.id_produs = pi.id_produs
+  and pi.id_inventar = 3
+  and TO_CHAR(Add_months(sysdate, 1), 'yyyy-mm') like TO_CHAR(pi.DATA_EXPIRARE, 'yyyy-mm');
+
+-- 7.11
+-- afiseaza producatorul cu cea mai mare suma pe care o avem in total
+select id_producator
+from PRODUCATOR p
+where id_producator in (select fp.id_producator
+                        from FACTURA_PRODUCATOR fp,
+                             FACTURA f
+                        where fp.id_factura = f.id_factura
+                        group by fp.id_producator
+                        having sum(f.TOTAL_FACTURA) = (select max(s)
+                                                       from (select sum(f1.total_factura) s
+                                                             from factura f1,
+                                                                  FACTURA_PRODUCATOR fp1
+                                                             where f1.id_factura = fp1.id_factura
+                                                             group by fp1.id_producator)));
+
+-- 7.12
+-- afisati toti angajatii care au consultat animalutul 1
+select distinct j.id_angajat, j.nume, j.prenume
+from ANGAJAT j,
+     FISA_MEDICALA fm,
+     ANIMALUT a
+where a.id_animalut = fm.id_animalut
+  and j.id_angajat = fm.id_doctor
+  and a.id_animalut = 1;
+
+-- 7.13
+-- afisati pt fiecare contract de angajat, al catelea in ierarhia manageriala este
+SELECT ctr.id_angajat, LEVEL depth, PRIOR id_angajat
+from angajat ctr
+START WITH ctr.id_sef IS NULL
+CONNECT BY PRIOR ctr.id_angajat = ctr.id_sef;
+
+-- 7.14 afisati cate tipuri de vaccin au fost vreodata pe stoc
+select sum(Decode(INSTR(LOWER(p.caracteristici), 'vaccin'), 0, 0, 1))
+from produs p;
+
+-- 7.15 returnati null daca boxer e cea mai consultata rasa, altfel rasa
+-- daca sunt mai multe rase cu acelasi nr de tratamente maxim, sa se afiseze null
+with c as (select rasa, count(*) nr
+           from ANIMALUT
+           group by rasa),
+     ans as (select c.rasa from c where c.nr = (select max(c2.nr) from c c2))
+select NULLIF(
+               case (select count(*) from ans)
+                   when 1 then (select * from ans)
+                   else null
+                   end, 'Boxer')
+from dual;

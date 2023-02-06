@@ -1,0 +1,1135 @@
+-- 8
+CREATE TABLE logging
+(
+    message_id   NUMBER,
+    message      VARCHAR2(255),
+    message_type VARCHAR2(1),
+    created_by   VARCHAR2(40) NOT NULL,
+    created_at   DATE         NOT NULL,
+    CONSTRAINT pk_message PRIMARY KEY (message_id),
+    CHECK (message_type = 'E' OR message_type = 'W' OR message_type = 'I')
+);
+
+CREATE SEQUENCE seq_err START WITH 1;
+
+-- 9 PL/SQL
+
+-- 9.1
+-- pentru un animalut dat, afisati doctorii la care acesta a mers cel mai des (de cele mai multe ori)
+-- utilizand doua tipuri de colectii invatate
+CREATE OR REPLACE PROCEDURE afis_doctor_favorit(id_animal ANIMALUT.id_animalut%type)
+    IS
+    TYPE tab_ind IS TABLE OF PLS_INTEGER INDEX BY PLS_INTEGER;
+    TYPE tab_imb IS TABLE OF FISA_MEDICALA.id_doctor%type;
+    cnt       tab_ind        := tab_ind();
+    doctors   tab_imb        := tab_imb();
+    index_max pls_integer;
+    id_doctor pls_integer;
+    ok        binary_integer := 0;
+    id        pls_integer;
+    num       ANGAJAT.nume%type;
+    prenum    ANGAJAT.prenume%type;
+    co        pls_integer    := 0;
+BEGIN
+    select fm.id_doctor bulk collect
+    into doctors
+    from FISA_MEDICALA fm
+    where fm.id_animalut = id_animal;
+
+    id_doctor := doctors.FIRST;
+    loop
+        exit when id_doctor is null;
+        begin
+            cnt(id_doctor) := cnt(id_doctor) + 1;
+            if ok = 1 then
+                if cnt(id_doctor) > cnt(index_max) then
+                    index_max := id_doctor;
+                end if;
+            end if;
+        EXCEPTION
+            when NO_DATA_FOUND then
+                cnt(id_doctor) := 1;
+                if ok = 0 then
+                    ok := 1;
+                    index_max := id_doctor;
+                end if;
+        end;
+        id_doctor := doctors.NEXT(id_doctor);
+    end loop;
+    if ok = 0 then
+        DBMS_OUTPUT.PUT_LINE('Animalutul ' || id_animal || ' nu are nicio fisa medicala in sistem');
+    else
+        id := cnt.FIRST;
+        DBMS_OUTPUT.PUT_LINE('Animalutul ' || id_animal || ' a mers de cele mai multe ori la acesti doctori:');
+        loop
+            exit when id is null;
+            if cnt(id) = cnt(index_max) then
+                select a.nume, a.prenume
+                into num, prenum
+                from ANGAJAT a
+                where a.id_angajat = id;
+                co := co + 1;
+                DBMS_OUTPUT.PUT_LINE(co || '. ' || num || ' ' || prenum);
+            end if;
+            id := cnt.NEXT(id);
+        end loop;
+    end if;
+END;
+/
+
+begin
+    afis_doctor_favorit(1);
+    afis_doctor_favorit(2);
+    afis_doctor_favorit(3);
+end;
+
+/
+
+-- 9.2
+-- pentru fiecare animalut cu proprietar, afisati toate fisele medicale ale acestuia, data la care au fost diagnosticati
+-- precum si facturile corespunzatoare acelor fise
+-- utilizand minim 2 tipuri de cursoare invatate, dintre care minim 1 sa fie parametrizat
+CREATE OR REPLACE PROCEDURE afis_tratamente_animalute
+    IS
+    TYPE refcursor IS REF CURSOR;
+    cursor mycursor(id_anim IN FISA_MEDICALA.id_animalut%type) is select diag.descriere,
+                                                                         fm.data_fisa,
+                                                                         cursor (select fp.id_factura, f.data_emitere
+                                                                                 from FACTURA_PROPRIETAR fp,
+                                                                                      FACTURA f
+                                                                                 where fp.id_factura = f.id_factura
+                                                                                   and fp.id_fisa_medicala = fm.id_fisa)
+                                                                  from FISA_MEDICALA fm,
+                                                                       DIAGNOSTIC diag
+                                                                  where fm.id_diagnostic = diag.id_diagnostic
+                                                                    and fm.id_animalut = id_anim;
+    v_cursor               refcursor;
+    diag                   DIAGNOSTIC.descriere%type;
+    data_diagnostic        FISA_MEDICALA.data_fisa%type;
+    id_factura             FACTURA_PROPRIETAR.id_factura%type;
+    data_factura           FACTURA.data_emitere%type;
+    id_animalut_max        ANIMALUT.id_animalut%type;
+    nume_animalut_max      ANIMALUT.nume%type;
+    nume_proprietar_max    PROPRIETAR.nume%type;
+    prenume_proprietar_max PROPRIETAR.prenume%type;
+    ok_factura             binary_integer;
+    co_max                 pls_integer := 0;
+    faliment EXCEPTION;
+BEGIN
+    for i in (select a.id_animalut, a.nume nume_animalut, p.nume nume_proprietar, p.prenume prenume_proprietar
+              from ANIMALUT a,
+                   PROPRIETAR p
+              where a.id_proprietar = p.id_proprietar)
+        loop
+            open mycursor(i.id_animalut);
+            fetch mycursor into diag, data_diagnostic, v_cursor;
+            if mycursor%notfound then
+                DBMS_OUTPUT.PUT_LINE('Animalutul ' || i.nume_animalut || ' al lui ' || i.nume_proprietar || ' ' ||
+                                     i.prenume_proprietar || ' nu a avut niciodata parte de o procedura medicala');
+                DBMS_OUTPUT.NEW_LINE();
+            else
+                DBMS_OUTPUT.PUT_LINE('Animalutul ' || i.nume_animalut || ' al lui ' || i.nume_proprietar || ' ' ||
+                                     i.prenume_proprietar || ' a avut urmatoarele interventii medicale:');
+                loop
+                    exit when mycursor%notfound;
+                    DBMS_OUTPUT.PUT_LINE(mycursor%rowcount || '. ' || diag || ' la data de ' || data_diagnostic ||
+                                         ', avand emise facturile:');
+                    ok_factura := 0;
+                    loop
+                        fetch v_cursor into id_factura, data_factura;
+                        exit when v_cursor%notfound;
+                        ok_factura := 1;
+                        DBMS_OUTPUT.PUT_LINE('  ' || mycursor%rowcount || '.' || v_cursor%rowcount || '. id_factura=' ||
+                                             id_factura || ', emisa la data de ' || data_factura);
+                    end loop;
+
+                    if ok_factura = 0 then
+                        DBMS_OUTPUT.PUT_LINE('  Nicio factura emisa pentru aceasta fisa medicala');
+                    end if;
+
+                    fetch mycursor into diag, data_diagnostic, v_cursor;
+                end loop;
+                DBMS_OUTPUT.NEW_LINE();
+
+                if mycursor%rowcount > co_max then
+                    co_max := mycursor%rowcount;
+                    id_animalut_max := i.id_animalut;
+                    nume_animalut_max := i.nume_animalut;
+                    nume_proprietar_max := i.nume_proprietar;
+                    prenume_proprietar_max := i.prenume_proprietar;
+                end if;
+            end if;
+            close mycursor;
+        end loop;
+    if co_max = 0 then
+        raise faliment;
+    end if;
+    DBMS_OUTPUT.PUT_LINE('Animalutul ' || nume_animalut_max || ' [id_animalut=' || id_animalut_max || '] al lui ' ||
+                         nume_proprietar_max || ' ' || prenume_proprietar_max ||
+                         ' este unul dintre cei mai fideli clienti ai nostri: ne-a vizitat de ' || co_max || ' ori :)');
+EXCEPTION
+    when faliment then
+        DBMS_OUTPUT.PUT_LINE('Nu avem niciun animalut care s-a tratat la noi...');
+END;
+/
+
+begin
+    afis_tratamente_animalute();
+end;
+/
+
+
+-- 9.3
+-- pentru fiecare fisa medicala a fiecarui animalut, afisati factura corespunzatoare si suma acesteia.
+-- Pt o suma minima primita ca parametru, returnati cate facturi au minim aceasta suma, iar prin parametru
+-- intoarceti suma tuturor facturilor. Daca sunt mai multe facturi pe aceeasi fisa medicala, ignorati-le si
+-- afisati un mesaj de alerta. Afisati de asemenea mesaje de alerta daca la fiecare moment in care raportul
+-- dintre suma totala a facturilor si nr acestora este mai mica decat suma minima primita ca parametru.
+-- Afisati totodata si un mesaj de alerta in caz ca se gasesc facturi emise pentru un animalut fara stapan
+-- (probabil ca a fost emisa pentru o persoana care a gasit un catelus pe strada ce avea nevoie de ingrijire,
+-- dar care nu a putut sa il adopte),
+-- utilizand minim o comanda sql care sa foloseasca 3 din tabelele definite si definind minim 2 exceptii
+CREATE OR REPLACE FUNCTION factura_aferenta_fisa(suma_min IN float, suma_totala OUT float) return pls_integer
+    IS
+    id     FACTURA_PROPRIETAR.id_factura%type;
+    pret   FACTURA.total_factura%type;
+    co     pls_integer := 0;
+    co_tot pls_integer := 0;
+    factura_fara_stapan EXCEPTION;
+    raport_pret_consultatii_prost EXCEPTION;
+BEGIN
+    suma_totala := 0;
+    for i in (select p.id_proprietar, p.nume propnum, p.prenume, a.nume animnume, fm.data_fisa, fm.id_fisa
+              from FISA_MEDICALA fm,
+                   ANIMALUT a,
+                   PROPRIETAR p
+              where fm.id_animalut = a.id_animalut
+                and a.id_proprietar = p.id_proprietar(+))
+        loop
+            BEGIN
+                select fp.id_factura, f.total_factura
+                into id, pret
+                from FACTURA_PROPRIETAR fp,
+                     FACTURA f
+                where fp.id_factura = f.id_factura
+                  and i.id_fisa = fp.id_fisa_medicala;
+                DBMS_OUTPUT.PUT_LINE('Proprietarul animalutului ' || i.animnume || ' al lui ' ||
+                                     nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') || ' are factura ' ||
+                                     id || ' emisa la data de ' || i.data_fisa || ', pentru fisa medicala ' ||
+                                     i.id_fisa || ', total_factura=' || pret);
+
+                if i.id_proprietar is null then
+                    raise factura_fara_stapan;
+                end if;
+
+                suma_totala := suma_totala + pret;
+                co_tot := co_tot + 1;
+                if pret >= suma_min then
+                    co := co + 1;
+                end if;
+
+                if suma_totala / co_tot < suma_min then
+                    raise raport_pret_consultatii_prost;
+                end if;
+            EXCEPTION
+                when NO_DATA_FOUND then
+                    DBMS_OUTPUT.PUT_LINE('Nu s-a emis nicio factura pentru proprietarul animalutului ' || i.animnume ||
+                                         ' al lui ' || nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
+                                         ' la data de ' || i.data_fisa ||
+                                         ' desi a fost tratat, cu fisa medicala cu id ' || i.id_fisa);
+                when TOO_MANY_ROWS then
+                    DBMS_OUTPUT.PUT_LINE('Proprietarul animalutului ' || i.animnume || ' al lui ' ||
+                                         nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
+                                         ' are mai multe facturi emise la data de ' || i.data_fisa);
+                when factura_fara_stapan then
+                    DBMS_OUTPUT.PUT_LINE('Alerta: factura emisa pentru animalut fara stapan');
+                when raport_pret_consultatii_prost then
+                    DBMS_OUTPUT.PUT_LINE('Alerta: raport suma_totala/co prost');
+            END;
+        end loop;
+    return co;
+end;
+/
+
+declare
+    res         pls_integer;
+    suma_min    float := 490;
+    suma_totala float;
+BEGIN
+    res := factura_aferenta_fisa(suma_min, suma_totala);
+    DBMS_OUTPUT.PUT_LINE(res || ' clienti au facturi de minim ' || suma_min);
+    DBMS_OUTPUT.PUT_LINE('suma totala din facturi unice: ' || suma_totala);
+end;
+/
+
+
+--9 suplimentar (folosit in pcahetul 2)
+--Intoarcem id-ul clientilor cu cea mai mare suma achitata (nu datorata) prin chitante
+--Daca sunt mai multi, ii intoarcem pe toti
+CREATE or REPLACE TYPE tab_imb is TABLE OF NUMBER(10);
+/
+
+CREATE or REPLACE FUNCTION topclienti(top_clienti out tab_imb) return pls_integer
+    IS
+    TYPE refcursor IS REF CURSOR;
+    cursor mycursor is select f.id_proprietar,
+                              cursor (select c.suma_platita
+                                      from CHITANTA c
+                                      where c.id_factura = f.id_factura)
+                       from FACTURA_PROPRIETAR f,
+                            PROPRIETAR p
+                       where f.id_proprietar = p.id_proprietar
+                       order by p.id_proprietar;
+    v_cursor   refcursor;
+    id         FACTURA_PROPRIETAR.id_factura%type := null;
+    suma       pls_integer                        := 0;
+    total_suma pls_integer                        := 0;
+    max_suma   pls_integer                        := 0;
+    last_id    PROPRIETAR.id_proprietar%type      := null;
+    co         pls_integer                        := 0;
+BEGIN
+    top_clienti := tab_imb();
+    open mycursor;
+    loop
+        fetch mycursor into id, v_cursor;
+        if last_id is null then
+            last_id := id;
+        else
+            if mycursor%notfound or id <> last_id then
+                if total_suma > max_suma then
+                    top_clienti.DELETE;
+                    top_clienti.EXTEND;
+                    co := 1;
+                    top_clienti(1) := last_id;
+                    max_suma := total_suma;
+                elsif total_suma = max_suma then
+                    top_clienti.EXTEND;
+                    co := co + 1;
+                    top_clienti(co) := last_id;
+                end if;
+                last_id := id;
+                total_suma := 0;
+            end if;
+        end if;
+        exit when mycursor%notfound;
+        loop
+            fetch v_cursor into suma;
+            exit when v_cursor%notfound;
+            total_suma := total_suma + suma;
+        end loop;
+    end loop;
+    close mycursor;
+    return co;
+
+END;
+/
+--functia returneaza nr de clienti, iar parametrul intoarce colectia
+--vom scrie un bloc anonim mai complex, pt a verifica corectitudinea functiei
+declare
+    co     pls_integer;
+    id     NUMBER(10);
+    mytab  tab_imb;
+    num    PROPRIETAR.nume%type;
+    prenum PROPRIETAR.prenume%type;
+begin
+    co := TOPCLIENTI(mytab);
+    DBMS_OUTPUT.PUT_LINE('Exista ' || co || ' clienti:');
+
+    id := mytab.FIRST;
+    loop
+        exit when id is null;
+        select nume, prenume
+        into num, prenum
+        from PROPRIETAR
+        where id_proprietar = mytab(id);
+        DBMS_OUTPUT.PUT_LINE(num || ' ' || prenum || ' (id: ' || mytab(id) || ')');
+        id := mytab.NEXT(id);
+    end loop;
+end;
+/
+
+-- 9.4 triggeru lmd la nivel de comanda
+CREATE OR REPLACE TRIGGER trig_contract
+    BEFORE DELETE
+    on CONTRACT
+BEGIN
+    RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
+END;
+/
+
+CREATE OR REPLACE TRIGGER trig_contract_angajat
+    BEFORE DELETE
+    on CONTRACT_ANGAJAT
+BEGIN
+    RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
+END;
+/
+
+CREATE OR REPLACE TRIGGER trig_contract_producator
+    BEFORE DELETE
+    on CONTRACT_PRODUCATOR
+BEGIN
+    RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
+END;
+/
+
+DELETE
+from CONTRACT
+where id_contract = 1;
+DELETE
+from CONTRACT_ANGAJAT
+where id_contract = 1;
+DELETE
+from CONTRACT_PRODUCATOR
+where id_contract = 4;
+
+-- 9.5 triggeri lmd la nivel de linie
+CREATE OR REPLACE TRIGGER trig_tratament_doctor
+    BEFORE INSERT OR UPDATE of id_doctor
+    on FISA_MEDICALA
+    FOR EACH ROW
+DECLARE
+    ok ANGAJAT.trateaza_animale%type;
+BEGIN
+    select trateaza_animale
+    into ok
+    from ANGAJAT
+    where id_angajat = :NEW.id_doctor;
+    if ok <> 1 then
+        RAISE_APPLICATION_ERROR(-20001, 'angajatul cu id-ul ' || :NEW.id_doctor || ' nu poate trata animalute');
+    end if;
+EXCEPTION
+    when NO_DATA_FOUND then
+        RAISE_APPLICATION_ERROR(-20000, 'Nu exista un asemenea doctor');
+end;
+/
+
+INSERT INTO FISA_MEDICALA(id_fisa, id_diagnostic, id_animalut, id_doctor, data_fisa)
+VALUES (60, 1, 1, 3, sysdate);
+INSERT INTO FISA_MEDICALA(id_fisa, id_diagnostic, id_animalut, id_doctor, data_fisa)
+VALUES (60, 1, 1, 6, sysdate);
+
+CREATE OR REPLACE TRIGGER trig_tratament_zinastere
+    BEFORE INSERT OR UPDATE
+    on FISA_MEDICALA
+    FOR EACH ROW
+DECLARE
+    zinastere ANIMALUT.zi_nastere%type;
+BEGIN
+    select zi_nastere
+    into zinastere
+    from ANIMALUT
+    where id_animalut = :NEW.id_animalut;
+
+    if :NEW.data_fisa < zinastere then
+        RAISE_APPLICATION_ERROR(-20013, 'Nu poti trata un animalut inainte ca acesta sa se nasca');
+    end if;
+EXCEPTION
+    when NO_DATA_FOUND then
+        RAISE_APPLICATION_ERROR(-20000, 'Nu exista un astfel de animalut in sistem');
+end;
+/
+
+INSERT INTO FISA_MEDICALA(id_fisa, id_diagnostic, id_animalut, id_doctor, data_fisa)
+VALUES (100, 1, 1, 1, to_date('01.01.1991', 'dd.mm.yyyy'));
+INSERT INTO FISA_MEDICALA(id_fisa, id_diagnostic, id_animalut, id_doctor, data_fisa)
+VALUES (100, 1, 100, 1, to_date('01.01.1991', 'dd.mm.yyyy'));
+update FISA_MEDICALA
+set data_fisa=to_date('01.01.1991', 'dd.mm.yyyy')
+where id_fisa = 1;
+
+-- compound trigger
+CREATE OR REPLACE TRIGGER trig_update_contracte
+    FOR UPDATE
+    ON CONTRACT COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Afisare cotracte actualizate');
+END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID contract ' || :new.id_contract);
+        DBMS_OUTPUT.PUT_LINE('Data semnare ' || :new.data_semnare);
+        DBMS_OUTPUT.PUT_LINE('Observatii ' || :new.observatii);
+        DBMS_OUTPUT.PUT_LINE('ID contract modificat ' || :new.id_contract_modificat);
+    END AFTER EACH ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Contractele au fost actualizate');
+    END AFTER STATEMENT;
+    END trig_update_contracte;
+/
+
+UPDATE CONTRACT
+SET OBSERVATII='Obs'
+WHERE ID_CONTRACT = 10;
+
+-- 9.6 trigger ldd
+CREATE OR REPLACE TRIGGER trig_ldd_contract
+    BEFORE DROP OR ALTER
+    on schema
+begin
+    if lower(ORA_DICT_OBJ_NAME) = lower('Contract') or lower(ORA_DICT_OBJ_NAME) = lower('Contract_angajat') or
+       lower(ORA_DICT_OBJ_NAME) = lower('Contract_producator') then
+        RAISE_APPLICATION_ERROR(-20777, 'Nu aveti voie sa modificati sau sa stegeti tabela cu contracte');
+    end if;
+end;
+/
+
+drop table CONTRACT;
+drop table CONTRACT_PRODUCATOR;
+drop table CONTRACT_ANGAJAT;
+alter table CONTRACT
+    drop column observatii;
+
+-- 9.7 pachet
+CREATE OR REPLACE PACKAGE package_clinica_vet_tav13
+AS
+    PROCEDURE afis_doctor_favorit(id_animal ANIMALUT.id_animalut%type);
+    PROCEDURE afis_tratamente_animalute;
+    FUNCTION factura_aferenta_fisa(suma_min IN float, suma_totala OUT float) return pls_integer;
+    TYPE tab_imb is TABLE OF NUMBER(10);
+    FUNCTION topclienti(top_clienti out tab_imb) return pls_integer;
+END package_clinica_vet_tav13;
+/
+
+CREATE OR REPLACE PACKAGE BODY package_clinica_vet_tav13
+AS
+    PROCEDURE afis_doctor_favorit(id_animal ANIMALUT.id_animalut%type)
+        IS
+        TYPE tab_ind IS TABLE OF PLS_INTEGER INDEX BY PLS_INTEGER;
+        TYPE tab_imb IS TABLE OF FISA_MEDICALA.id_doctor%type;
+        cnt       tab_ind        := tab_ind();
+        doctors   tab_imb        := tab_imb();
+        index_max pls_integer;
+        id_doctor pls_integer;
+        ok        binary_integer := 0;
+        id        pls_integer;
+        num       ANGAJAT.nume%type;
+        prenum    ANGAJAT.prenume%type;
+        co        pls_integer    := 0;
+    BEGIN
+        select fm.id_doctor bulk collect
+        into doctors
+        from FISA_MEDICALA fm
+        where fm.id_animalut = id_animal;
+
+        id_doctor := doctors.FIRST;
+        loop
+            exit when id_doctor is null;
+            begin
+                cnt(id_doctor) := cnt(id_doctor) + 1;
+                if ok = 1 then
+                    if cnt(id_doctor) > cnt(index_max) then
+                        index_max := id_doctor;
+                    end if;
+                end if;
+            EXCEPTION
+                when NO_DATA_FOUND then
+                    cnt(id_doctor) := 1;
+                    if ok = 0 then
+                        ok := 1;
+                        index_max := id_doctor;
+                    end if;
+            end;
+            id_doctor := doctors.NEXT(id_doctor);
+        end loop;
+        if ok = 0 then
+            DBMS_OUTPUT.PUT_LINE('Animalutul ' || id_animal || ' nu are nicio fisa medicala in sistem');
+        else
+            id := cnt.FIRST;
+            DBMS_OUTPUT.PUT_LINE('Animalutul ' || id_animal || ' a mers de cele mai multe ori la acesti doctori:');
+            loop
+                exit when id is null;
+                if cnt(id) = cnt(index_max) then
+                    select a.nume, a.prenume
+                    into num, prenum
+                    from ANGAJAT a
+                    where a.id_angajat = id;
+                    co := co + 1;
+                    DBMS_OUTPUT.PUT_LINE(co || '. ' || num || ' ' || prenum);
+                end if;
+                id := cnt.NEXT(id);
+            end loop;
+        end if;
+    END afis_doctor_favorit;
+
+    PROCEDURE afis_tratamente_animalute
+        IS
+        TYPE refcursor IS REF CURSOR;
+        cursor mycursor(id_anim IN FISA_MEDICALA.id_animalut%type) is select diag.descriere,
+                                                                             fm.data_fisa,
+                                                                             cursor (select fp.id_factura, f.data_emitere
+                                                                                     from FACTURA_PROPRIETAR fp,
+                                                                                          FACTURA f
+                                                                                     where fp.id_factura = f.id_factura
+                                                                                       and fp.id_fisa_medicala = fm.id_fisa)
+                                                                      from FISA_MEDICALA fm,
+                                                                           DIAGNOSTIC diag
+                                                                      where fm.id_diagnostic = diag.id_diagnostic
+                                                                        and fm.id_animalut = id_anim;
+        v_cursor               refcursor;
+        diag                   DIAGNOSTIC.descriere%type;
+        data_diagnostic        FISA_MEDICALA.data_fisa%type;
+        id_factura             FACTURA_PROPRIETAR.id_factura%type;
+        data_factura           FACTURA.data_emitere%type;
+        id_animalut_max        ANIMALUT.id_animalut%type;
+        nume_animalut_max      ANIMALUT.nume%type;
+        nume_proprietar_max    PROPRIETAR.nume%type;
+        prenume_proprietar_max PROPRIETAR.prenume%type;
+        ok_factura             binary_integer;
+        co_max                 pls_integer := 0;
+        faliment EXCEPTION;
+    BEGIN
+        for i in (select a.id_animalut, a.nume nume_animalut, p.nume nume_proprietar, p.prenume prenume_proprietar
+                  from ANIMALUT a,
+                       PROPRIETAR p
+                  where a.id_proprietar = p.id_proprietar)
+            loop
+                open mycursor(i.id_animalut);
+                fetch mycursor into diag, data_diagnostic, v_cursor;
+                if mycursor%notfound then
+                    DBMS_OUTPUT.PUT_LINE('Animalutul ' || i.nume_animalut || ' al lui ' || i.nume_proprietar || ' ' ||
+                                         i.prenume_proprietar || ' nu a avut niciodata parte de o procedura medicala');
+                    DBMS_OUTPUT.NEW_LINE();
+                else
+                    DBMS_OUTPUT.PUT_LINE('Animalutul ' || i.nume_animalut || ' al lui ' || i.nume_proprietar || ' ' ||
+                                         i.prenume_proprietar || ' a avut urmatoarele interventii medicale:');
+                    loop
+                        exit when mycursor%notfound;
+                        DBMS_OUTPUT.PUT_LINE(mycursor%rowcount || '. ' || diag || ' la data de ' || data_diagnostic ||
+                                             ', avand emise facturile:');
+                        ok_factura := 0;
+                        loop
+                            fetch v_cursor into id_factura, data_factura;
+                            exit when v_cursor%notfound;
+                            ok_factura := 1;
+                            DBMS_OUTPUT.PUT_LINE('  ' || mycursor%rowcount || '.' || v_cursor%rowcount ||
+                                                 '. id_factura=' ||
+                                                 id_factura || ', emisa la data de ' || data_factura);
+                        end loop;
+
+                        if ok_factura = 0 then
+                            DBMS_OUTPUT.PUT_LINE('  Nicio factura emisa pentru aceasta fisa medicala');
+                        end if;
+
+                        fetch mycursor into diag, data_diagnostic, v_cursor;
+                    end loop;
+                    DBMS_OUTPUT.NEW_LINE();
+
+                    if mycursor%rowcount > co_max then
+                        co_max := mycursor%rowcount;
+                        id_animalut_max := i.id_animalut;
+                        nume_animalut_max := i.nume_animalut;
+                        nume_proprietar_max := i.nume_proprietar;
+                        prenume_proprietar_max := i.prenume_proprietar;
+                    end if;
+                end if;
+                close mycursor;
+            end loop;
+        if co_max = 0 then
+            raise faliment;
+        end if;
+        DBMS_OUTPUT.PUT_LINE('Animalutul ' || nume_animalut_max || ' [id_animalut=' || id_animalut_max || '] al lui ' ||
+                             nume_proprietar_max || ' ' || prenume_proprietar_max ||
+                             ' este unul dintre cei mai fideli clienti ai nostri: ne-a vizitat de ' || co_max ||
+                             ' ori :)');
+    EXCEPTION
+        when faliment then
+            DBMS_OUTPUT.PUT_LINE('Nu avem niciun animalut care s-a tratat la noi...');
+    END afis_tratamente_animalute;
+
+    FUNCTION factura_aferenta_fisa(suma_min IN float, suma_totala OUT float) return pls_integer
+        IS
+        id     FACTURA_PROPRIETAR.id_factura%type;
+        pret   FACTURA.total_factura%type;
+        co     pls_integer := 0;
+        co_tot pls_integer := 0;
+        factura_fara_stapan EXCEPTION;
+        raport_pret_consultatii_prost EXCEPTION;
+    BEGIN
+        suma_totala := 0;
+        for i in (select p.id_proprietar, p.nume propnum, p.prenume, a.nume animnume, fm.data_fisa, fm.id_fisa
+                  from FISA_MEDICALA fm,
+                       ANIMALUT a,
+                       PROPRIETAR p
+                  where fm.id_animalut = a.id_animalut
+                    and a.id_proprietar = p.id_proprietar(+))
+            loop
+                BEGIN
+                    select fp.id_factura, f.total_factura
+                    into id, pret
+                    from FACTURA_PROPRIETAR fp,
+                         FACTURA f
+                    where fp.id_factura = f.id_factura
+                      and i.id_fisa = fp.id_fisa_medicala;
+                    DBMS_OUTPUT.PUT_LINE('Proprietarul animalutului ' || i.animnume || ' al lui ' ||
+                                         nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
+                                         ' are factura ' ||
+                                         id || ' emisa la data de ' || i.data_fisa || ', pentru fisa medicala ' ||
+                                         i.id_fisa || ', total_factura=' || pret);
+
+                    if i.id_proprietar is null then
+                        raise factura_fara_stapan;
+                    end if;
+
+                    suma_totala := suma_totala + pret;
+                    co_tot := co_tot + 1;
+                    if pret >= suma_min then
+                        co := co + 1;
+                    end if;
+
+                    if suma_totala / co_tot < suma_min then
+                        raise raport_pret_consultatii_prost;
+                    end if;
+                EXCEPTION
+                    when NO_DATA_FOUND then
+                        DBMS_OUTPUT.PUT_LINE('Nu s-a emis nicio factura pentru proprietarul animalutului ' ||
+                                             i.animnume ||
+                                             ' al lui ' || nvl(i.propnum, 'FARA') || ' ' ||
+                                             nvl(i.prenume, 'PROPRIETAR') ||
+                                             ' la data de ' || i.data_fisa ||
+                                             ' desi a fost tratat, cu fisa medicala cu id ' || i.id_fisa);
+                    when TOO_MANY_ROWS then
+                        DBMS_OUTPUT.PUT_LINE('Proprietarul animalutului ' || i.animnume || ' al lui ' ||
+                                             nvl(i.propnum, 'FARA') || ' ' || nvl(i.prenume, 'PROPRIETAR') ||
+                                             ' are mai multe facturi emise la data de ' || i.data_fisa);
+                    when factura_fara_stapan then
+                        DBMS_OUTPUT.PUT_LINE('Alerta: factura emisa pentru animalut fara stapan');
+                    when raport_pret_consultatii_prost then
+                        DBMS_OUTPUT.PUT_LINE('Alerta: raport suma_totala/co prost');
+                END;
+            end loop;
+        return co;
+    end factura_aferenta_fisa;
+
+    FUNCTION topclienti(top_clienti out tab_imb) return pls_integer
+        IS
+        TYPE refcursor IS REF CURSOR;
+        cursor mycursor is select f.id_proprietar,
+                                  cursor (select c.suma_platita
+                                          from CHITANTA c
+                                          where c.id_factura = f.id_factura)
+                           from FACTURA_PROPRIETAR f,
+                                PROPRIETAR p
+                           where f.id_proprietar = p.id_proprietar
+                           order by p.id_proprietar;
+        v_cursor   refcursor;
+        id         FACTURA_PROPRIETAR.id_factura%type := null;
+        suma       pls_integer                        := 0;
+        total_suma pls_integer                        := 0;
+        max_suma   pls_integer                        := 0;
+        last_id    PROPRIETAR.id_proprietar%type      := null;
+        co         pls_integer                        := 0;
+    BEGIN
+        top_clienti := tab_imb();
+        open mycursor;
+        loop
+            fetch mycursor into id, v_cursor;
+            if last_id is null then
+                last_id := id;
+            else
+                if mycursor%notfound or id <> last_id then
+                    if total_suma > max_suma then
+                        top_clienti.DELETE;
+                        top_clienti.EXTEND;
+                        co := 1;
+                        top_clienti(1) := last_id;
+                        max_suma := total_suma;
+                    elsif total_suma = max_suma then
+                        top_clienti.EXTEND;
+                        co := co + 1;
+                        top_clienti(co) := last_id;
+                    end if;
+                    last_id := id;
+                    total_suma := 0;
+                end if;
+            end if;
+            exit when mycursor%notfound;
+            loop
+                fetch v_cursor into suma;
+                exit when v_cursor%notfound;
+                total_suma := total_suma + suma;
+            end loop;
+        end loop;
+        close mycursor;
+        return co;
+
+    END topclienti;
+
+END package_clinica_vet_tav13;
+/
+
+begin
+    package_clinica_vet_tav13.afis_doctor_favorit(1);
+    DBMS_OUTPUT.PUT_LINE('........................................................................................');
+
+    package_clinica_vet_tav13.afis_tratamente_animalute();
+    DBMS_OUTPUT.PUT_LINE('........................................................................................');
+
+    declare
+        co      pls_integer;
+        sum_tot float;
+    begin
+        co := package_clinica_vet_tav13.factura_aferenta_fisa(490, sum_tot);
+        DBMS_OUTPUT.PUT_LINE(co || ' clienti au facturi de minim ' || 490);
+        DBMS_OUTPUT.PUT_LINE('suma totala din facturi unice: ' || sum_tot);
+    end;
+    DBMS_OUTPUT.PUT_LINE('........................................................................................');
+
+    declare
+        co     pls_integer;
+        id     NUMBER(10);
+        mytab  package_clinica_vet_tav13.tab_imb;
+        num    PROPRIETAR.nume%type;
+        prenum PROPRIETAR.prenume%type;
+    begin
+        co := package_clinica_vet_tav13.TOPCLIENTI(mytab);
+        DBMS_OUTPUT.PUT_LINE('Exista ' || co || ' clienti:');
+
+        id := mytab.FIRST;
+        loop
+            exit when id is null;
+            select nume, prenume
+            into num, prenum
+            from PROPRIETAR
+            where id_proprietar = mytab(id);
+            DBMS_OUTPUT.PUT_LINE(num || ' ' || prenum || ' (id: ' || mytab(id) || ')');
+            id := mytab.NEXT(id);
+        end loop;
+    end;
+end;
+/
+
+
+-- Suplimentar: pachet care demonstreaza cum pot fi utilizate mai multe din procedurile anterioare
+-- unitar, pentru a afisa tratamentele princ care au trecut clientii fidel
+CREATE OR REPLACE PACKAGE package_clinica_vet_tav14 AS
+    TYPE tab_imb is TABLE OF NUMBER(10);
+    top_clienti tab_imb := tab_imb();
+    FUNCTION topclienti RETURN PLS_INTEGER;
+    PROCEDURE afis_topclienti;
+    PROCEDURE afis_tratamente_animalute;
+    TYPE refcursor IS REF CURSOR;
+    type rec is record
+                (
+                    nume_animalut      ANIMALUT.nume%type,
+                    nume_proprietar    PROPRIETAR.nume%type,
+                    prenume_proprietar PROPRIETAR.prenume%type
+                );
+END package_clinica_vet_tav14;
+/
+
+CREATE OR REPLACE PACKAGE BODY package_clinica_vet_tav14 AS
+
+    FUNCTION topclienti RETURN PLS_INTEGER
+        IS
+        cursor mycursor is select f.id_proprietar,
+                                  cursor (select c.suma_platita
+                                          from CHITANTA c
+                                          where c.id_factura = f.id_factura)
+                           from FACTURA_PROPRIETAR f,
+                                PROPRIETAR p
+                           where f.id_proprietar = p.id_proprietar
+                           order by p.id_proprietar;
+        v_cursor   refcursor;
+        id         FACTURA_PROPRIETAR.id_factura%type := null;
+        suma       pls_integer                        := 0;
+        total_suma pls_integer                        := 0;
+        max_suma   pls_integer                        := 0;
+        last_id    PROPRIETAR.id_proprietar%type      := null;
+        co         pls_integer                        := 0;
+    BEGIN
+        open mycursor;
+        loop
+            fetch mycursor into id, v_cursor;
+            if last_id is null then
+                last_id := id;
+            else
+                if id <> last_id or mycursor%notfound then
+                    if total_suma > max_suma then
+                        top_clienti.DELETE;
+                        top_clienti.EXTEND;
+                        co := 1;
+                        top_clienti(1) := last_id;
+                        max_suma := total_suma;
+                    elsif total_suma = max_suma then
+                        top_clienti.EXTEND;
+                        co := co + 1;
+                        top_clienti(co) := last_id;
+                    end if;
+                    last_id := id;
+                    total_suma := 0;
+                end if;
+            end if;
+            exit when mycursor%notfound;
+            loop
+                fetch v_cursor into suma;
+                exit when v_cursor%notfound;
+                total_suma := total_suma + suma;
+            end loop;
+        end loop;
+        close mycursor;
+        return co;
+
+    END topclienti;
+
+    PROCEDURE afis_tratamente_animalute
+        IS
+        TYPE refcursor IS REF CURSOR;
+        cursor mycursor(id_anim IN FISA_MEDICALA.id_animalut%type) is select diag.descriere,
+                                                                             fm.data_fisa,
+                                                                             cursor (select fp.id_factura, f.data_emitere
+                                                                                     from FACTURA_PROPRIETAR fp,
+                                                                                          FACTURA f
+                                                                                     where fp.id_factura = f.id_factura
+                                                                                       and fp.id_fisa_medicala = fm.id_fisa)
+                                                                      from FISA_MEDICALA fm,
+                                                                           DIAGNOSTIC diag
+                                                                      where fm.id_diagnostic = diag.id_diagnostic
+                                                                        and fm.id_animalut = id_anim;
+        v_cursor               refcursor;
+        diag                   DIAGNOSTIC.descriere%type;
+        data_diagnostic        FISA_MEDICALA.data_fisa%type;
+        id_factura             FACTURA_PROPRIETAR.id_factura%type;
+        data_factura           FACTURA.data_emitere%type;
+        id_animalut_max        ANIMALUT.id_animalut%type;
+        nume_animalut_max      ANIMALUT.nume%type;
+        nume_proprietar_max    PROPRIETAR.nume%type;
+        prenume_proprietar_max PROPRIETAR.prenume%type;
+        ok_factura             binary_integer;
+        co_max                 pls_integer := 0;
+        faliment EXCEPTION;
+    BEGIN
+        for i in (select a.id_animalut, a.nume nume_animalut, p.nume nume_proprietar, p.prenume prenume_proprietar
+                  from ANIMALUT a,
+                       PROPRIETAR p
+                  where a.id_proprietar = p.id_proprietar
+                    and p.id_proprietar in (select * from table (top_clienti)) )
+            loop
+                open mycursor(i.id_animalut);
+                fetch mycursor into diag, data_diagnostic, v_cursor;
+                if mycursor%notfound then
+                    DBMS_OUTPUT.PUT_LINE('Animalutul ' || i.nume_animalut || ' al lui ' || i.nume_proprietar || ' ' ||
+                                         i.prenume_proprietar || ' nu a avut niciodata parte de o procedura medicala');
+                    DBMS_OUTPUT.NEW_LINE();
+                else
+                    DBMS_OUTPUT.PUT_LINE('Animalutul ' || i.nume_animalut || ' al lui ' || i.nume_proprietar || ' ' ||
+                                         i.prenume_proprietar || ' a avut urmatoarele interventii medicale:');
+                    loop
+                        exit when mycursor%notfound;
+                        DBMS_OUTPUT.PUT_LINE(mycursor%rowcount || '. ' || diag || ' la data de ' || data_diagnostic ||
+                                             ', avand emise facturile:');
+                        ok_factura := 0;
+                        loop
+                            fetch v_cursor into id_factura, data_factura;
+                            exit when v_cursor%notfound;
+                            ok_factura := 1;
+                            DBMS_OUTPUT.PUT_LINE('  ' || mycursor%rowcount || '.' || v_cursor%rowcount ||
+                                                 '. id_factura=' ||
+                                                 id_factura || ', emisa la data de ' || data_factura);
+                        end loop;
+
+                        if ok_factura = 0 then
+                            DBMS_OUTPUT.PUT_LINE('  Nicio factura emisa pentru aceasta fisa medicala');
+                        end if;
+
+                        fetch mycursor into diag, data_diagnostic, v_cursor;
+                    end loop;
+                    DBMS_OUTPUT.NEW_LINE();
+
+                    if mycursor%rowcount > co_max then
+                        co_max := mycursor%rowcount;
+                        id_animalut_max := i.id_animalut;
+                        nume_animalut_max := i.nume_animalut;
+                        nume_proprietar_max := i.nume_proprietar;
+                        prenume_proprietar_max := i.prenume_proprietar;
+                    end if;
+                end if;
+                close mycursor;
+            end loop;
+        if co_max = 0 then
+            raise faliment;
+        end if;
+        DBMS_OUTPUT.PUT_LINE('Animalutul ' || nume_animalut_max || ' [id_animalut=' || id_animalut_max || '] al lui ' ||
+                             nume_proprietar_max || ' ' || prenume_proprietar_max ||
+                             ' este unul dintre cei mai fideli clienti ai nostri: ne-a vizitat de ' || co_max ||
+                             ' ori :)');
+    EXCEPTION
+        when faliment then
+            DBMS_OUTPUT.PUT_LINE('Nu avem niciun animalut care s-a tratat la noi...');
+    END afis_tratamente_animalute;
+
+    PROCEDURE afis_topclienti
+        IS
+        co     pls_integer;
+        id     NUMBER(10);
+        num    PROPRIETAR.nume%type;
+        prenum PROPRIETAR.prenume%type;
+    begin
+        co := package_clinica_vet_tav14.TOPCLIENTI;
+        DBMS_OUTPUT.PUT_LINE('Exista ' || co || ' clienti:');
+        id := top_clienti.FIRST;
+        loop
+            exit when id is null;
+            select nume, prenume
+            into num, prenum
+            from PROPRIETAR
+            where id_proprietar = top_clienti(id);
+            DBMS_OUTPUT.PUT_LINE(num || ' ' || prenum || ' (id: ' || top_clienti(id) || ')');
+            id := top_clienti.NEXT(id);
+        end loop;
+        DBMS_OUTPUT.PUT_LINE('Animalutele acestora au folosit cel mai des aceste tratamente:');
+        package_clinica_vet_tav14.AFIS_TRATAMENTE_ANIMALUTE();
+    end afis_topclienti;
+
+END package_clinica_vet_tav14;
+/
+
+begin
+    package_clinica_vet_tav14.afis_topclienti;
+end;
+/
+
+
+-- Inca un pachet suplimentar, cu doua utilitare folositoare
+-- Primul subprogram din pachet ne permit sa ordonam pacientii la primirea in cabinet astfel incat sa reducem timpul
+-- mediu de asteptare. Al doilea subprogram afiseaza datoriile ramase de achitat ale clientilor
+CREATE OR REPLACE PACKAGE package_clinica_vet_utilitare
+IS
+
+    type t_idx is table of pls_integer index by pls_integer;
+    type array is VARRAY(1000) of pls_integer;
+    type myrec_datorii is record
+                          (
+                              id_prop      PROPRIETAR.id_proprietar%type,
+                              nume_prop    PROPRIETAR.nume%type,
+                              prenume_prop PROPRIETAR.prenume%type,
+                              id_fac       FACTURA_PROPRIETAR.id_factura%type,
+                              total_fac    FACTURA.total_factura%type,
+                              suma_platita CHITANTA.suma_platita%type
+                          );
+    type datorii_imb is table of myrec_datorii;
+    FUNCTION timp_minim_de_asteptare(v in out array) RETURN t_idx;
+    PROCEDURE afis_datorii;
+END package_clinica_vet_utilitare;
+/
+
+
+CREATE OR REPLACE PACKAGE BODY package_clinica_vet_utilitare
+IS
+
+    FUNCTION timp_minim_de_asteptare(v in out array) RETURN t_idx
+        Is --Primind un vector cu timpul in care dureaza fiecare procedura medicala pt oamenii din acea zi
+    --se stabileste in ce ordine vor intra in cabinet, ai timpul mediu de asteptare sa fie minim
+        poz_min pls_integer;
+        sol     t_idx;
+        co      pls_integer := 0;
+    BEGIN
+        if v.FIRST is null then
+            raise NO_DATA_FOUND;
+        end if;
+        loop
+            poz_min := 1;
+            for i in v.FIRST..v.LAST
+                loop
+                    if v(i) < v(poz_min) then
+                        poz_min := i;
+                    end if;
+                end loop;
+            exit when v(poz_min) = 1001;
+            co := co + 1;
+            sol(poz_min) := co;
+            v(poz_min) := 1001;
+        end loop;
+        return sol;
+    EXCEPTION
+        when NO_DATA_FOUND then
+            return sol;
+    END timp_minim_de_asteptare;
+
+    PROCEDURE afis_datorii is
+        my_t      datorii_imb;
+        s         pls_integer;
+        s_dat     pls_integer                   := 0;
+        idx       pls_integer;
+        last_prop PROPRIETAR.id_proprietar%type := null;
+    Begin
+
+        select p.id_proprietar,
+               p.nume,
+               p.prenume,
+               fp.id_factura,
+               f.total_factura,
+               sum(c.suma_platita) bulk collect
+        into my_t
+        from PROPRIETAR p,
+             FACTURA_PROPRIETAR fp,
+             FACTURA f,
+             CHITANTA c
+        where p.id_proprietar = fp.id_proprietar
+          and fp.id_factura = f.id_factura
+          and f.id_factura = c.id_factura(+)
+        group by p.id_proprietar, p.nume, p.prenume, fp.id_factura, f.total_factura
+        order by p.id_proprietar;
+        idx := my_t.FIRST;
+        loop
+            if last_prop is null then
+                if idx is not null then
+                    last_prop := my_t(idx).id_prop;
+                    DBMS_OUTPUT.PUT_LINE(
+                                'Proprietarul ' || my_t(idx).nume_prop || ' ' || my_t(idx).prenume_prop || ' (id:' ||
+                                my_t(idx).id_prop || '):');
+                end if;
+            else
+                if idx is null or my_t(idx).id_prop <> last_prop then
+                    DBMS_OUTPUT.PUT_LINE('Total de plata: ' || s_dat);
+                    DBMS_OUTPUT.NEW_LINE();
+                    s_dat := 0;
+                    if idx is not null then
+                        last_prop := my_t(idx).id_prop;
+                        DBMS_OUTPUT.PUT_LINE(
+                                    'Proprietarul ' || my_t(idx).nume_prop || ' ' || my_t(idx).prenume_prop ||
+                                    ' (id:' ||
+                                    my_t(idx).id_prop || '):');
+                    end if;
+                end if;
+            end if;
+            exit when idx is null;
+            s := my_t(idx).total_fac - nvl(my_t(idx).suma_platita, 0);
+            s_dat := s_dat + s;
+            if s > 0 then
+                DBMS_OUTPUT.PUT_LINE('La factura ' || my_t(idx).id_fac || ' mai are de platit: ' || s);
+            end if;
+            idx := my_t.NEXT(idx);
+        end loop;
+
+    end afis_datorii;
+
+END package_clinica_vet_utilitare;
+/
+
+begin
+    package_clinica_vet_utilitare.afis_datorii;
+end;
+/
+
+DECLARE
+    v   package_clinica_vet_utilitare.array := package_clinica_vet_utilitare.array(7, 1, 2, 5, 3);
+    sol package_clinica_vet_utilitare.t_idx;
+BEGIN
+
+    sol := package_clinica_vet_utilitare.timp_minim_de_asteptare(v);
+    if sol.FIRST is not null then
+        for i in sol.FIRST..sol.LAST
+            loop
+                DBMS_OUTPUT.PUT_LINE(i || '. ' || sol(i));
+            end loop;
+    else
+        DBMS_OUTPUT.PUT_LINE('Niciun Client Programat');
+    end if;
+end;
+/
