@@ -1140,9 +1140,6 @@ CREATE OR REPLACE TRIGGER trig_contract
     BEFORE DELETE
     on CONTRACT
 BEGIN
-    insert into mesaje(message_id, message, message_type, created_by, created_at)
-    values (seq_err.NEXTVAL, 'trig_contract: Contractele trebuie sa ramana pe veci in sistem', 'E', USER, sysdate);
-    commit;
     RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
 END;
 /
@@ -1151,10 +1148,6 @@ CREATE OR REPLACE TRIGGER trig_contract_angajat
     BEFORE DELETE
     on CONTRACT_ANGAJAT
 BEGIN
-    insert into mesaje(message_id, message, message_type, created_by, created_at)
-    values (seq_err.NEXTVAL, 'trig_contract_angajat: Contractele trebuie sa ramana pe veci in sistem', 'E', USER,
-            sysdate);
-    commit;
     RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
 END;
 /
@@ -1163,10 +1156,6 @@ CREATE OR REPLACE TRIGGER trig_contract_producator
     BEFORE DELETE
     on CONTRACT_PRODUCATOR
 BEGIN
-    insert into mesaje(message_id, message, message_type, created_by, created_at)
-    values (seq_err.NEXTVAL, 'trig_contract_producator: Contractele trebuie sa ramana pe veci in sistem', 'E', USER,
-            sysdate);
-    commit;
     RAISE_APPLICATION_ERROR(-20222, 'Contractele trebuie sa ramana pe veci in sistem');
 END;
 /
@@ -1194,18 +1183,10 @@ BEGIN
     from ANGAJAT
     where id_angajat = :NEW.id_doctor;
     if ok <> 1 then
-        insert into mesaje(message_id, message, message_type, created_by, created_at)
-        values (seq_err.NEXTVAL,
-                'trig_tratament_doctor: angajatul cu id-ul ' || :NEW.id_doctor || ' nu poate trata animalute', 'E',
-                USER, sysdate);
-        commit;
         RAISE_APPLICATION_ERROR(-20001, 'angajatul cu id-ul ' || :NEW.id_doctor || ' nu poate trata animalute');
     end if;
 EXCEPTION
     when NO_DATA_FOUND then
-        insert into mesaje(message_id, message, message_type, created_by, created_at)
-        values (seq_err.NEXTVAL, 'trig_tratament_doctor: Nu exista un asemenea doctor', 'E', USER, sysdate);
-        commit;
         RAISE_APPLICATION_ERROR(-20000, 'Nu exista un asemenea doctor');
 end;
 /
@@ -1228,18 +1209,10 @@ BEGIN
     where id_animalut = :NEW.id_animalut;
 
     if :NEW.data_fisa < zinastere then
-        insert into mesaje(message_id, message, message_type, created_by, created_at)
-        values (seq_err.NEXTVAL, 'trig_tratament_zinastere: Nu poti trata un animalut inainte ca acesta sa se nasca',
-                'E', USER, sysdate);
-        commit;
         RAISE_APPLICATION_ERROR(-20013, 'Nu poti trata un animalut inainte ca acesta sa se nasca');
     end if;
 EXCEPTION
     when NO_DATA_FOUND then
-        insert into mesaje(message_id, message, message_type, created_by, created_at)
-        values (seq_err.NEXTVAL, 'trig_tratament_zinastere: Nu exista un astfel de animalut in sistem', 'E', USER,
-                sysdate);
-        commit;
         RAISE_APPLICATION_ERROR(-20000, 'Nu exista un astfel de animalut in sistem');
 end;
 /
@@ -1288,10 +1261,6 @@ CREATE OR REPLACE TRIGGER trig_ldd_contract
 begin
     if lower(ORA_DICT_OBJ_NAME) = lower('Contract') or lower(ORA_DICT_OBJ_NAME) = lower('Contract_angajat') or
        lower(ORA_DICT_OBJ_NAME) = lower('Contract_producator') then
-        insert into mesaje(message_id, message, message_type, created_by, created_at)
-        values (seq_err.NEXTVAL, 'trig_ldd_contract: Nu aveti voie sa modificati sau sa stegeti tabela cu contracte',
-                'E', USER, sysdate);
-        commit;
         RAISE_APPLICATION_ERROR(-20777, 'Nu aveti voie sa modificati sau sa stegeti tabela cu contracte');
     end if;
 end;
