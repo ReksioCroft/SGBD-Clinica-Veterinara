@@ -13,6 +13,11 @@ ERD:
 ![alt text](../main/tav_proiect_sgbd_erd.jpg)
 
 Diagrama Conceptuala:
-![alt text](../main/Relational_1.png)
+![alt text](../main/tav_proiect_sgbd_conceptual.jpg)
+
+Implementarea finala:
+![alt text](../main/Relational_1.pdf)
+
+
 
 Proiect realizat și testat utilizând Oracle Database Express Edition (XE) Release  (21c)
