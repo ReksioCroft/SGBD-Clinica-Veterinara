@@ -176,13 +176,12 @@ CREATE TABLE INVENTAR
 
 CREATE TABLE PRODUSE_DIN_INVENTAR
 (
-    id_prod_inventar NUMBER(10),
-    id_produs        NUMBER(10) NOT NULL,
-    id_inventar      NUMBER(10) NOT NULL,
-    id_factura       NUMBER(10) NOT NULL,
-    cantitate        NUMBER(5)  NOT NULL,
-    data_expirare    DATE,
-    CONSTRAINT pk_produse_inventar PRIMARY KEY (id_prod_inventar),
+    id_produs     NUMBER(10) NOT NULL,
+    id_inventar   NUMBER(10) NOT NULL,
+    id_factura    NUMBER(10) NOT NULL,
+    cantitate     NUMBER(5)  NOT NULL,
+    data_expirare DATE,
+    CONSTRAINT pk_produse_inventar PRIMARY KEY (id_produs, id_inventar, id_factura),
     CONSTRAINT fk_prod_inventar FOREIGN KEY (id_inventar) REFERENCES INVENTAR (id_inventar),
     CONSTRAINT fk_prod_produs FOREIGN KEY (id_produs) REFERENCES PRODUS (id_produs),
     CONSTRAINT fk_prod_factura FOREIGN KEY (id_factura) REFERENCES FACTURA_PRODUCATOR (id_factura)
@@ -534,48 +533,48 @@ VALUES (4, to_date('05.01.2021', 'dd.mm.yyyy'));
 INSERT INTO INVENTAR(id_inventar, data_inventar)
 VALUES (5, to_date('05.01.2022', 'dd.mm.yyyy'));
 
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (1, 1, 1, 11, 10, to_date('05.01.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (2, 2, 1, 12, 15, to_date('05.01.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (3, 1, 2, 13, 20, to_date('05.01.2016', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (4, 2, 2, 14, 25, to_date('05.01.2016', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (5, 1, 3, 15, 35, to_date('05.03.2023', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (6, 2, 3, 16, 30, to_date('05.01.2021', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (7, 3, 1, 17, 1);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (8, 3, 2, 18, 1);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (9, 3, 3, 19, 2);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (10, 4, 1, 11, 5);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (11, 4, 2, 12, 10);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (12, 4, 3, 13, 15);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (13, 5, 1, 14, 1);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (14, 5, 2, 15, 1);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (15, 5, 3, 16, 2);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (16, 6, 1, 17, 100, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (17, 7, 1, 18, 150, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (18, 6, 2, 19, 100, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (19, 7, 2, 11, 150, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (20, 6, 3, 12, 234, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (21, 7, 3, 13, 512, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (1, 1, 11, 10, to_date('05.01.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (2, 1, 12, 15, to_date('05.01.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (1, 2, 13, 20, to_date('05.01.2016', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (2, 2, 14, 25, to_date('05.01.2016', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (1, 3, 15, 35, to_date('05.03.2023', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (2, 3, 16, 30, to_date('05.01.2021', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (3, 1, 17, 1);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (3, 2, 18, 1);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (3, 3, 19, 2);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (4, 1, 11, 5);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (4, 2, 12, 10);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (4, 3, 13, 15);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (5, 1, 14, 1);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (5, 2, 15, 1);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (5, 3, 16, 2);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (6, 1, 17, 100, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (7, 1, 18, 150, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (6, 2, 19, 100, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (7, 2, 11, 150, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (6, 3, 12, 234, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (7, 3, 13, 512, to_date('13.07.2011', 'dd.mm.yyyy'));
 
 
 commit;
@@ -685,19 +684,17 @@ having COUNT(*) = (select count(*)
 -- inclusiv cei care nu au facturi
 select p.id_proprietar
 from PROPRIETAR p
-where NOT EXISTS(
-        select 1
-        from FACTURA f,
-             FACTURA_PROPRIETAR fp
-        where f.id_factura = fp.id_factura
-          and fp.id_proprietar = p.id_proprietar
-          and not exists(
-                select 1
-                from FACTURA f1
-                where f1.id_factura = f.id_factura
-                  and f.total_factura >= (select sum(c.suma_platita) from CHITANTA c where c.id_factura = f1.id_factura)
-            )
-    );
+where NOT EXISTS(select 1
+                 from FACTURA f,
+                      FACTURA_PROPRIETAR fp
+                 where f.id_factura = fp.id_factura
+                   and fp.id_proprietar = p.id_proprietar
+                   and not exists(select 1
+                                  from FACTURA f1
+                                  where f1.id_factura = f.id_factura
+                                    and f.total_factura >= (select sum(c.suma_platita)
+                                                            from CHITANTA c
+                                                            where c.id_factura = f1.id_factura)));
 
 -- 7.9
 -- sa se afiseze pentru fiecare animalut cate luni au trecut intre prima si ultima fise medicala
@@ -709,6 +706,9 @@ group by a.id_animalut;
 
 -- 7.10
 -- afisati produse care expira luna viitoare din ultimul inventar
+insert into PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+values (1, 3, 11, 1, TO_DATE(Add_months(sysdate, 1)));
+
 select *
 from PRODUSE_DIN_INVENTAR pi,
      PRODUS p
@@ -1253,6 +1253,166 @@ END BEFORE STATEMENT;
 UPDATE CONTRACT
 SET OBSERVATII='Obs'
 WHERE ID_CONTRACT = 10;
+
+
+CREATE OR REPLACE TRIGGER trig_isa_factura_proprietar
+    FOR INSERT OR UPDATE
+    ON FACTURA_PROPRIETAR COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Verificare unicitate subtip facturi proprietar');
+END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    Begin
+        declare
+            co pls_integer := 0;
+        begin
+            select count(*) into co from FACTURA_PRODUCATOR fp where fp.id_factura = :NEW.id_factura;
+            if co > 0 then
+                RAISE_APPLICATION_ERROR(-20778, 'O factura nu poate fi simultan si pt proprietar si pt producator');
+            end if;
+        end;
+    end before each row;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID factura ' || :new.id_factura || ' este acum de tip proprietar');
+    END AFTER EACH
+    ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Facturile au fost actualizare');
+    END AFTER STATEMENT;
+    END trig_isa_factura_proprietar;
+/
+
+insert into FACTURA_PROPRIETAR (id_factura, id_proprietar, id_fisa_medicala)
+VALUES (11, 1, 1);
+update FACTURA_PROPRIETAR
+set id_factura = 11
+where id_factura = 1;
+
+CREATE OR REPLACE TRIGGER trig_isa_factura_producator
+    FOR INSERT OR UPDATE
+    ON FACTURA_PRODUCATOR COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Verificare unicitate subtip facturi producator');
+END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    Begin
+        declare
+            co pls_integer := 0;
+        begin
+            select count(*) into co from FACTURA_PROPRIETAR fp where fp.id_factura = :NEW.id_factura;
+            if co > 0 then
+                RAISE_APPLICATION_ERROR(-20778, 'O factura nu poate fi simultan si pt proprietar si pt producator');
+            end if;
+        end;
+    end before each row;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID factura ' || :new.id_factura || ' este acum de tip producator');
+    END AFTER EACH
+    ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Facturile au fost actualizare');
+    END AFTER STATEMENT;
+    END trig_isa_factura_producator;
+/
+
+insert into FACTURA_PRODUCATOR(id_factura, id_producator)
+values (1, 1);
+update FACTURA_PRODUCATOR
+set id_factura=1
+where id_factura = 11;
+
+
+CREATE OR REPLACE TRIGGER trig_isa_contract_producator
+    FOR INSERT OR UPDATE
+    ON CONTRACT_PRODUCATOR COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Verificare unicitate subtip contract producator');
+END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    Begin
+        declare
+            co pls_integer := 0;
+        begin
+            select count(*) into co from CONTRACT_ANGAJAT cp where cp.id_contract = :NEW.id_contract;
+            if co > 0 then
+                RAISE_APPLICATION_ERROR(-20778,
+                                        'Un contract nu poate fi simultan si pt un angajat si pt un producator');
+            end if;
+        end;
+    end before each row;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID contract ' || :new.id_contract || ' este acum de tip producator');
+    END AFTER EACH
+    ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Contractele au fost actualizare');
+    END AFTER STATEMENT;
+    END trig_isa_contract_producator;
+/
+
+insert into CONTRACT_PRODUCATOR(id_contract, id_producator)
+values (1, 1);
+update CONTRACT_PRODUCATOR
+set id_contract=1
+where id_contract = 4;
+
+CREATE OR REPLACE TRIGGER trig_isa_contract_angajat
+    FOR INSERT OR UPDATE
+    ON CONTRACT_ANGAJAT COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Verificare unicitate subtip contract angajat');
+END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    Begin
+        declare
+            co pls_integer := 0;
+        begin
+            select count(*) into co from CONTRACT_PRODUCATOR cp where cp.id_contract = :NEW.id_contract;
+            if co > 0 then
+                RAISE_APPLICATION_ERROR(-20778,
+                                        'Un contract nu poate fi simultan si pt un angajat si pt un producator');
+            end if;
+        end;
+    end before each row;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID contract ' || :new.id_contract || ' este acum de tip angajat');
+    END AFTER EACH
+    ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Contractele au fost actualizare');
+    END AFTER STATEMENT;
+    END trig_isa_contract_angajat;
+/
+
+insert into CONTRACT_ANGAJAT(id_contract, id_angajat, rol, salariu)
+values (4, 1, 'rol', 1);
+update CONTRACT_ANGAJAT
+set id_contract = 4
+where id_contract = 1;
 
 -- 9.6 trigger ldd
 CREATE OR REPLACE TRIGGER trig_ldd_contract
