@@ -103,19 +103,17 @@ having COUNT(*) = (select count(*)
 -- inclusiv cei care nu au facturi
 select p.id_proprietar
 from PROPRIETAR p
-where NOT EXISTS(
-        select 1
-        from FACTURA f,
-             FACTURA_PROPRIETAR fp
-        where f.id_factura = fp.id_factura
-          and fp.id_proprietar = p.id_proprietar
-          and not exists(
-                select 1
-                from FACTURA f1
-                where f1.id_factura = f.id_factura
-                  and f.total_factura >= (select sum(c.suma_platita) from CHITANTA c where c.id_factura = f1.id_factura)
-            )
-    );
+where NOT EXISTS(select 1
+                 from FACTURA f,
+                      FACTURA_PROPRIETAR fp
+                 where f.id_factura = fp.id_factura
+                   and fp.id_proprietar = p.id_proprietar
+                   and not exists(select 1
+                                  from FACTURA f1
+                                  where f1.id_factura = f.id_factura
+                                    and f.total_factura >= (select sum(c.suma_platita)
+                                                            from CHITANTA c
+                                                            where c.id_factura = f1.id_factura)));
 
 -- 7.9
 -- sa se afiseze pentru fiecare animalut cate luni au trecut intre prima si ultima fise medicala
@@ -127,6 +125,9 @@ group by a.id_animalut;
 
 -- 7.10
 -- afisati produse care expira luna viitoare din ultimul inventar
+insert into PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+values (1, 3, 11, 1, TO_DATE(Add_months(sysdate, 1)));
+
 select *
 from PRODUSE_DIN_INVENTAR pi,
      PRODUS p

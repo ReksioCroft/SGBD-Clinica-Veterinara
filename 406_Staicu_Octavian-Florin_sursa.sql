@@ -949,6 +949,11 @@ begin
 end;
 /
 
+-- pt a da trigger la exceptia faliment
+-- drop table FISA_MEDICALA cascade constraints purge
+-- apoi re create table FISA_MEDICALA
+/
+
 
 -- 9.3
 -- pentru fiecare fisa medicala a fiecarui animalut, afisati factura corespunzatoare si suma acesteia.
@@ -1135,7 +1140,7 @@ begin
 end;
 /
 
--- 9.4 triggeru lmd la nivel de comanda
+-- 9.4 trigger lmd la nivel de comanda
 CREATE OR REPLACE TRIGGER trig_contract
     BEFORE DELETE
     on CONTRACT

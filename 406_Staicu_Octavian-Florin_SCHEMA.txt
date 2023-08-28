@@ -176,13 +176,12 @@ CREATE TABLE INVENTAR
 
 CREATE TABLE PRODUSE_DIN_INVENTAR
 (
-    id_prod_inventar NUMBER(10),
-    id_produs        NUMBER(10) NOT NULL,
-    id_inventar      NUMBER(10) NOT NULL,
-    id_factura       NUMBER(10) NOT NULL,
-    cantitate        NUMBER(5)  NOT NULL,
-    data_expirare    DATE,
-    CONSTRAINT pk_produse_inventar PRIMARY KEY (id_prod_inventar),
+    id_produs     NUMBER(10) NOT NULL,
+    id_inventar   NUMBER(10) NOT NULL,
+    id_factura    NUMBER(10) NOT NULL,
+    cantitate     NUMBER(5)  NOT NULL,
+    data_expirare DATE,
+    CONSTRAINT pk_produse_inventar PRIMARY KEY (id_produs, id_inventar, id_factura),
     CONSTRAINT fk_prod_inventar FOREIGN KEY (id_inventar) REFERENCES INVENTAR (id_inventar),
     CONSTRAINT fk_prod_produs FOREIGN KEY (id_produs) REFERENCES PRODUS (id_produs),
     CONSTRAINT fk_prod_factura FOREIGN KEY (id_factura) REFERENCES FACTURA_PRODUCATOR (id_factura)
@@ -534,48 +533,48 @@ VALUES (4, to_date('05.01.2021', 'dd.mm.yyyy'));
 INSERT INTO INVENTAR(id_inventar, data_inventar)
 VALUES (5, to_date('05.01.2022', 'dd.mm.yyyy'));
 
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (1, 1, 1, 11, 10, to_date('05.01.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (2, 2, 1, 12, 15, to_date('05.01.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (3, 1, 2, 13, 20, to_date('05.01.2016', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (4, 2, 2, 14, 25, to_date('05.01.2016', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (5, 1, 3, 15, 35, to_date('05.03.2023', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (6, 2, 3, 16, 30, to_date('05.01.2021', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (7, 3, 1, 17, 1);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (8, 3, 2, 18, 1);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (9, 3, 3, 19, 2);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (10, 4, 1, 11, 5);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (11, 4, 2, 12, 10);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (12, 4, 3, 13, 15);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (13, 5, 1, 14, 1);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (14, 5, 2, 15, 1);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate)
-VALUES (15, 5, 3, 16, 2);
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (16, 6, 1, 17, 100, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (17, 7, 1, 18, 150, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (18, 6, 2, 19, 100, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (19, 7, 2, 11, 150, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (20, 6, 3, 12, 234, to_date('13.07.2011', 'dd.mm.yyyy'));
-INSERT INTO PRODUSE_DIN_INVENTAR(id_prod_inventar, id_produs, id_inventar, id_factura, cantitate, data_expirare)
-VALUES (21, 7, 3, 13, 512, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (1, 1, 11, 10, to_date('05.01.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (2, 1, 12, 15, to_date('05.01.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (1, 2, 13, 20, to_date('05.01.2016', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (2, 2, 14, 25, to_date('05.01.2016', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (1, 3, 15, 35, to_date('05.03.2023', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (2, 3, 16, 30, to_date('05.01.2021', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (3, 1, 17, 1);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (3, 2, 18, 1);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (3, 3, 19, 2);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (4, 1, 11, 5);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (4, 2, 12, 10);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (4, 3, 13, 15);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (5, 1, 14, 1);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (5, 2, 15, 1);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate)
+VALUES (5, 3, 16, 2);
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (6, 1, 17, 100, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (7, 1, 18, 150, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (6, 2, 19, 100, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (7, 2, 11, 150, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (6, 3, 12, 234, to_date('13.07.2011', 'dd.mm.yyyy'));
+INSERT INTO PRODUSE_DIN_INVENTAR(id_produs, id_inventar, id_factura, cantitate, data_expirare)
+VALUES (7, 3, 13, 512, to_date('13.07.2011', 'dd.mm.yyyy'));
 
 
 commit;

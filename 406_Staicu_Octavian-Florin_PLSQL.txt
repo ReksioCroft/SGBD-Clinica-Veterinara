@@ -181,6 +181,11 @@ begin
 end;
 /
 
+-- pt a da trigger la exceptia faliment
+-- drop table FISA_MEDICALA cascade constraints purge
+-- apoi re create table FISA_MEDICALA
+/
+
 
 -- 9.3
 -- pentru fiecare fisa medicala a fiecarui animalut, afisati factura corespunzatoare si suma acesteia.
@@ -367,7 +372,7 @@ begin
 end;
 /
 
--- 9.4 triggeru lmd la nivel de comanda
+-- 9.4 trigger lmd la nivel de comanda
 CREATE OR REPLACE TRIGGER trig_contract
     BEFORE DELETE
     on CONTRACT
@@ -485,6 +490,166 @@ END BEFORE STATEMENT;
 UPDATE CONTRACT
 SET OBSERVATII='Obs'
 WHERE ID_CONTRACT = 10;
+
+
+CREATE OR REPLACE TRIGGER trig_isa_factura_proprietar
+    FOR INSERT OR UPDATE
+    ON FACTURA_PROPRIETAR COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Verificare unicitate subtip facturi proprietar');
+END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    Begin
+        declare
+            co pls_integer := 0;
+        begin
+            select count(*) into co from FACTURA_PRODUCATOR fp where fp.id_factura = :NEW.id_factura;
+            if co > 0 then
+                RAISE_APPLICATION_ERROR(-20778, 'O factura nu poate fi simultan si pt proprietar si pt producator');
+            end if;
+        end;
+    end before each row;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID factura ' || :new.id_factura || ' este acum de tip proprietar');
+    END AFTER EACH
+    ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Facturile au fost actualizare');
+    END AFTER STATEMENT;
+    END trig_isa_factura_proprietar;
+/
+
+insert into FACTURA_PROPRIETAR (id_factura, id_proprietar, id_fisa_medicala)
+VALUES (11, 1, 1);
+update FACTURA_PROPRIETAR
+set id_factura = 11
+where id_factura = 1;
+
+CREATE OR REPLACE TRIGGER trig_isa_factura_producator
+    FOR INSERT OR UPDATE
+    ON FACTURA_PRODUCATOR COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Verificare unicitate subtip facturi producator');
+END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    Begin
+        declare
+            co pls_integer := 0;
+        begin
+            select count(*) into co from FACTURA_PROPRIETAR fp where fp.id_factura = :NEW.id_factura;
+            if co > 0 then
+                RAISE_APPLICATION_ERROR(-20778, 'O factura nu poate fi simultan si pt proprietar si pt producator');
+            end if;
+        end;
+    end before each row;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID factura ' || :new.id_factura || ' este acum de tip producator');
+    END AFTER EACH
+    ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Facturile au fost actualizare');
+    END AFTER STATEMENT;
+    END trig_isa_factura_producator;
+/
+
+insert into FACTURA_PRODUCATOR(id_factura, id_producator)
+values (1, 1);
+update FACTURA_PRODUCATOR
+set id_factura=1
+where id_factura = 11;
+
+
+CREATE OR REPLACE TRIGGER trig_isa_contract_producator
+    FOR INSERT OR UPDATE
+    ON CONTRACT_PRODUCATOR COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Verificare unicitate subtip contract producator');
+END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    Begin
+        declare
+            co pls_integer := 0;
+        begin
+            select count(*) into co from CONTRACT_ANGAJAT cp where cp.id_contract = :NEW.id_contract;
+            if co > 0 then
+                RAISE_APPLICATION_ERROR(-20778,
+                                        'Un contract nu poate fi simultan si pt un angajat si pt un producator');
+            end if;
+        end;
+    end before each row;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID contract ' || :new.id_contract || ' este acum de tip producator');
+    END AFTER EACH
+    ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Contractele au fost actualizare');
+    END AFTER STATEMENT;
+    END trig_isa_contract_producator;
+/
+
+insert into CONTRACT_PRODUCATOR(id_contract, id_producator)
+values (1, 1);
+update CONTRACT_PRODUCATOR
+set id_contract=1
+where id_contract = 4;
+
+CREATE OR REPLACE TRIGGER trig_isa_contract_angajat
+    FOR INSERT OR UPDATE
+    ON CONTRACT_ANGAJAT COMPOUND TRIGGER
+
+BEFORE STATEMENT IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Verificare unicitate subtip contract angajat');
+END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    Begin
+        declare
+            co pls_integer := 0;
+        begin
+            select count(*) into co from CONTRACT_PRODUCATOR cp where cp.id_contract = :NEW.id_contract;
+            if co > 0 then
+                RAISE_APPLICATION_ERROR(-20778,
+                                        'Un contract nu poate fi simultan si pt un angajat si pt un producator');
+            end if;
+        end;
+    end before each row;
+
+    AFTER EACH ROW IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('ID contract ' || :new.id_contract || ' este acum de tip angajat');
+    END AFTER EACH
+    ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Contractele au fost actualizare');
+    END AFTER STATEMENT;
+    END trig_isa_contract_angajat;
+/
+
+insert into CONTRACT_ANGAJAT(id_contract, id_angajat, rol, salariu)
+values (4, 1, 'rol', 1);
+update CONTRACT_ANGAJAT
+set id_contract = 4
+where id_contract = 1;
 
 -- 9.6 trigger ldd
 CREATE OR REPLACE TRIGGER trig_ldd_contract
