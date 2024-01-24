@@ -1,0 +1,107 @@
+-- 3. Auditarea
+
+ALTER SYSTEM SET audit_trail = db, extended SCOPE = spfile;
+
+AUDIT SELECT, UPDATE, INSERT, DELETE ON FISA_MEDICALA;
+
+CREATE SYNONYM AUD$ FOR SYS.AUD$;
+
+SELECT *
+FROM FISA_MEDICALA;
+
+INSERT INTO FISA_MEDICALA(id_fisa, id_diagnostic, id_animalut, id_doctor, data_fisa, observatii)
+VALUES (1113, 1, 1, 1, sysdate, 'obs audit');
+
+SELECT obj$name, sqltext, userid
+from AUD$
+ORDER BY ntimestamp# DESC;
+
+-- b)
+
+CREATE SEQUENCE secv_audit START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE audit_fisa_medicala
+(
+    sec_id           NUMBER(4) PRIMARY KEY,
+    user_name        VARCHAR2(20)   NOT NULL,
+    session_name     VARCHAR2(20)   NOT NULL,
+    data_modificare  DATE           NOT NULL,
+    observatii_vechi VARCHAR2(4000) NOT NULL,
+    observatii_noi   VARCHAR2(4000) NOT NULL
+);
+
+CREATE OR REPLACE TRIGGER trigger_audit_fisa_medicala
+    AFTER INSERT OR UPDATE OF observatii
+    ON FISA_MEDICALA
+    FOR EACH ROW
+    WHEN (NEW.observatii IS NOT NULL and OLD.observatii IS NOT NULL )
+BEGIN
+    DECLARE
+        v_old_observatii FISA_MEDICALA.observatii%TYPE := :OLD.observatii;
+        v_new_observatii FISA_MEDICALA.observatii%TYPE := :NEW.observatii;
+    BEGIN
+        INSERT INTO audit_fisa_medicala(sec_id, user_name, session_name, data_modificare, observatii_vechi,
+                                        observatii_noi)
+        VALUES (secv_audit.NEXTVAL, sys_context('userenv', 'session_user'), sys_context('userenv', 'host'), sysdate,
+                v_old_observatii, v_new_observatii);
+    END;
+END;
+/
+
+UPDATE FISA_MEDICALA
+set observatii = 'obs audit 2'
+where id_fisa = 1113;
+
+SELECT *
+FROM audit_fisa_medicala;
+-- c)
+-- GRANT EXECUTE ON DBMS_FGA TO C##REKSIO;
+
+
+CREATE OR REPLACE PROCEDURE POLICY_HANDLER_FISA_MEDICALA(object_schema VARCHAR2, object_name VARCHAR2, policy_name VARCHAR2)
+AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Audit Policy: [object_schema = ' || object_schema || ']; [object_name = ' || object_name ||
+                         ']; [policy_name = ' || policy_name || ']');
+END;
+/
+
+--  GRANT SELECT ON DBA_FGA_AUDIT_TRAIL TO c##reksio;
+CREATE OR REPLACE PROCEDURE CREATE_AUDIT_POLICY_FOR_FISA_MEDICALA as
+BEGIN
+
+    BEGIN
+        dbms_fga.drop_policy(
+                object_schema => 'C##REKSIO',
+                object_name => 'FISA_MEDICALA',
+                policy_name => 'POLICY_FISA_MEDICALA'
+            );
+    EXCEPTION
+        WHEN OTHERS then
+            NULL;
+    END;
+     dbms_fga.add_policy(
+             object_schema => 'C##REKSIO',
+             object_name => 'FISA_MEDICALA',
+             policy_name => 'POLICY_FISA_MEDICALA',
+             enable => false,
+             statement_types => 'UPDATE',
+             handler_module => 'POLICY_HANDLER_FISA_MEDICALA');
+END;
+/
+
+
+BEGIN
+    CREATE_AUDIT_POLICY_FOR_FISA_MEDICALA();
+    dbms_fga.enable_policy(object_schema => 'C##REKSIO',
+                           object_name => 'FISA_MEDICALA',
+                           policy_name => 'POLICY_FISA_MEDICALA');
+END;
+
+UPDATE FISA_MEDICALA
+set observatii = 'obs audit 3'
+where id_fisa = 1113;
+
+SELECT *
+FROM dba_fga_audit_trail
+ORDER BY TIMESTAMP DESC;

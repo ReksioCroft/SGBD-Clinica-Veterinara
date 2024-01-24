@@ -1,0 +1,43 @@
+-- 6. contextul aplicatiei
+
+CREATE OR REPLACE PROCEDURE CONTEXT_TURA_ZI_NOAPTE IS
+    curr_hour NUMBER(3);
+BEGIN
+    SELECT TO_NUMBER(TO_CHAR(sysdate, 'hh24'))
+    INTO curr_hour
+    FROM dual;
+
+    DBMS_OUTPUT.PUT_LINE('THE HOUR IS: '|| curr_hour);
+
+    IF curr_hour < 10 OR curr_hour > 20 THEN
+        DBMS_OUTPUT.PUT_LINE('Se lucreaza in tura de noapte! Atentie la datele introduse!');
+        DBMS_SESSION.SET_CONTEXT('APP_CONTEXT', 'ACC_NIGHT_SHIFT', 'YES');
+    ELSE
+        dbms_session.set_context('APP_CONTEXT', 'ACC_NIGHT_SHIFT', 'NO');
+    END IF;
+END;
+/
+
+CREATE CONTEXT APP_CONTEXT USING CONTEXT_TURA_ZI_NOAPTE;
+
+BEGIN
+    CONTEXT_TURA_ZI_NOAPTE();
+end;
+
+CREATE OR REPLACE TRIGGER TRIGGER_ACCESS
+    AFTER LOGON ON DATABASE
+DECLARE
+BEGIN
+    CONTEXT_TURA_ZI_NOAPTE();
+END;
+/
+
+DECLARE
+    night_shift_value VARCHAR2(3);
+BEGIN
+    SELECT SYS_CONTEXT('APP_CONTEXT','ACC_NIGHT_SHIFT') INTO night_shift_value
+    FROM dual;
+
+    DBMS_OUTPUT.PUT_LINE('Night Shift Value: ' || night_shift_value);
+
+end;

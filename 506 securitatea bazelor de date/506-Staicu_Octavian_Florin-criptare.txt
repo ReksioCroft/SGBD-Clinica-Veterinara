@@ -1,0 +1,123 @@
+-- 2. criptarea datelor
+CREATE TABLE ENCKeys
+(
+    id_key  NUMBER(7),
+    enc_key RAW(16),
+    CONSTRAINT pk_ENCKeys PRIMARY KEY (id_key)
+);
+
+CREATE TABLE Proprietar_Encrypted
+(
+    id_proprietar NUMBER(10),
+    nume          RAW(100) NOT NULL,
+    prenume       RAW(100) NOT NULL,
+    telefon       RAW(100) NOT NULL,
+    email         RAW(100) NOT NULL,
+    id_locatie    RAW(100) NOT NULL,
+    CONSTRAINT pk_proprietar_enc PRIMARY KEY (id_proprietar)
+);
+
+CREATE TABLE Proprietar_Decrypted
+(
+    id_proprietar NUMBER(10),
+    nume          VARCHAR2(32) NOT NULL,
+    prenume       VARCHAR2(32) NOT NULL,
+    telefon       NUMBER(10)   NOT NULL,
+    email         VARCHAR2(64) NOT NULL,
+    id_locatie    NUMBER(10)   NOT NULL,
+    CONSTRAINT pk_proprietar_dec PRIMARY KEY (id_proprietar)
+);
+
+CREATE OR REPLACE PROCEDURE Encrypt_Proprietar AS
+    encryption_key               RAW(16);
+    encryption_binary_location   RAW(100);
+    encryption_binary_last_name  RAW(100);
+    encryption_binary_first_name RAW(100);
+    encryption_binary_email      RAW(100);
+    encryption_binary_phone      RAW(100);
+    encryption_type              PLS_INTEGER;
+BEGIN
+    FOR c IN (SELECT * FROM PROPRIETAR)
+        LOOP
+            encryption_key := DBMS_CRYPTO.randombytes(16);
+
+            INSERT INTO ENCKeys (id_key, enc_key) VALUES (c.id_proprietar, encryption_key);
+
+            encryption_type := DBMS_CRYPTO.ENCRYPT_AES128 + DBMS_CRYPTO.PAD_PKCS5 + DBMS_CRYPTO.CHAIN_CBC;
+
+            encryption_binary_location :=
+                    DBMS_CRYPTO.encrypt(UTL_I18N.STRING_TO_RAW(c.id_locatie, 'AL32UTF8'), encryption_type,
+                                        encryption_key);
+            encryption_binary_last_name :=
+                    DBMS_CRYPTO.encrypt(UTL_I18N.STRING_TO_RAW(c.prenume, 'AL32UTF8'), encryption_type, encryption_key);
+            encryption_binary_first_name :=
+                    DBMS_CRYPTO.encrypt(UTL_I18N.STRING_TO_RAW(c.nume, 'AL32UTF8'), encryption_type, encryption_key);
+            encryption_binary_email :=
+                    DBMS_CRYPTO.encrypt(UTL_I18N.STRING_TO_RAW(c.email, 'AL32UTF8'), encryption_type, encryption_key);
+            encryption_binary_phone :=
+                    DBMS_CRYPTO.encrypt(UTL_I18N.STRING_TO_RAW(c.telefon, 'AL32UTF8'), encryption_type, encryption_key);
+
+            INSERT INTO PROPRIETAR_Encrypted (id_proprietar,
+                                              nume, prenume, telefon,
+                                              email, id_locatie)
+            VALUES (c.id_proprietar, encryption_binary_last_name, encryption_binary_first_name, encryption_binary_phone,
+                    encryption_binary_email, encryption_binary_location);
+        END LOOP;
+    COMMIT;
+END ;
+
+BEGIN
+    Encrypt_Proprietar();
+end;
+
+SELECT *
+FROM ENCKeys;
+
+SELECT *
+FROM PROPRIETAR_ENCRYPTED;
+
+CREATE OR REPLACE PROCEDURE Decrypt_Proprietar AS
+    encryption_type      PLS_INTEGER;
+    decryption_key       RAW(16);
+    decrypted_location   VARCHAR2(100);
+    decrypted_last_name  VARCHAR2(100);
+    decrypted_first_name VARCHAR2(100);
+    decrypted_email      VARCHAR2(100);
+    decrypted_phone      VARCHAR2(100);
+BEGIN
+    FOR c_enc IN (SELECT * FROM PROPRIETAR_ENCRYPTED)
+        LOOP
+
+            SELECT enc_key
+            INTO decryption_key
+            FROM ENCKeys
+            WHERE id_key = TO_NUMBER(c_enc.id_proprietar);
+
+            encryption_type := DBMS_CRYPTO.ENCRYPT_AES128 + DBMS_CRYPTO.PAD_PKCS5 + DBMS_CRYPTO.CHAIN_CBC;
+
+            decrypted_location :=
+                    UTL_I18N.RAW_TO_CHAR(DBMS_CRYPTO.DECRYPT(c_enc.id_locatie, encryption_type, decryption_key));
+            decrypted_last_name :=
+                    UTL_I18N.RAW_TO_CHAR(DBMS_CRYPTO.DECRYPT(c_enc.nume, encryption_type, decryption_key));
+            decrypted_first_name :=
+                    UTL_I18N.RAW_TO_CHAR(DBMS_CRYPTO.DECRYPT(c_enc.prenume, encryption_type, decryption_key));
+            decrypted_email := UTL_I18N.RAW_TO_CHAR(DBMS_CRYPTO.DECRYPT(c_enc.email, encryption_type, decryption_key));
+            decrypted_phone :=
+                    UTL_I18N.RAW_TO_CHAR(DBMS_CRYPTO.DECRYPT(c_enc.telefon, encryption_type, decryption_key));
+
+            INSERT INTO PROPRIETAR_DECRYPTED (id_proprietar, nume, prenume, telefon, email, id_locatie)
+            VALUES (c_enc.id_proprietar,
+                    decrypted_first_name,
+                    decrypted_last_name,
+                    decrypted_phone, decrypted_email,
+                    decrypted_location);
+        END LOOP;
+    COMMIT;
+END;
+
+BEGIN
+    DECRYPT_PROPRIETAR();
+end;
+
+SELECT *
+FROM PROPRIETAR_DECRYPTED;
